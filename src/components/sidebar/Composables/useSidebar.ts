@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export type SidebarSection = 'dashboard' | 'viewer' | 'admin'
+export type SidebarSection = 'dashboard' | 'scans' | 'viewer' | 'admin'
 
 interface SidebarStoreState {
   collapsed: boolean
@@ -47,6 +47,10 @@ export function useSidebar() {
     dashboard: {
       active: activeSection === 'dashboard',
       open: () => setSidebarState({ activeSection: 'dashboard' }),
+    },
+    scans: {
+      active: activeSection === 'scans',
+      open: () => setSidebarState({ activeSection: 'scans' }),
     },
     viewer: {
       active: activeSection === 'viewer',

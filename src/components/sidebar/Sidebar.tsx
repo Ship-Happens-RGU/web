@@ -3,7 +3,7 @@ import SidebarButton from './SidebarButton'
 import { useSidebar } from './Composables/useSidebar'
 
 export default function Sidebar() {
-  const { collapsed, toggleCollapsed, dashboard, viewer, admin } = useSidebar()
+  const { collapsed, toggleCollapsed, dashboard, scans, viewer, admin } = useSidebar()
 
   return (
     <aside
@@ -40,6 +40,14 @@ export default function Sidebar() {
           label="Dashboard"
           active={dashboard.active}
           onClick={dashboard.open}
+        />
+
+        <SidebarButton
+          collapsed={collapsed}
+          icon="folder-close"
+          label="Scans"
+          active={scans.active}
+          onClick={scans.open}
         />
 
         <SidebarButton

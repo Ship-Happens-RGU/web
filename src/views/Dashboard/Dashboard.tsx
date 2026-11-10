@@ -4,6 +4,7 @@ import { useLogout } from '@/composables/ApiWrappers/Auth/useLogout'
 import { useMe } from '@/composables/ApiWrappers/Auth/useMe'
 import AppShell from '@/layouts/AppShell'
 import CenteredPage from '@/layouts/CenteredPage'
+import ScansView from '@/views/Scans/ScansView'
 import ViewerView from '@/views/Viewer/ViewerView'
 
 export default function Dashboard() {
@@ -19,7 +20,9 @@ export default function Dashboard() {
     <AppShell>
       <ViewerView active={activeSection === 'viewer'} />
 
-      {activeSection !== 'viewer' && (
+      {activeSection === 'scans' && <ScansView />}
+
+      {activeSection !== 'viewer' && activeSection !== 'scans' && (
         <CenteredPage
           icon="home"
           crumbs={[{ label: 'ShipHappens' }, { label: 'Dashboard' }]}

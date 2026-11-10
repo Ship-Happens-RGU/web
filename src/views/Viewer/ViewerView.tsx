@@ -16,11 +16,17 @@ import {
   Text,
 } from '@blueprintjs/core'
 import PageHeader from '@/components/PageHeader'
+import { useScanTree } from '@/composables/ApiWrappers/Scans/useScanTree'
+import { useScanSession } from '@/composables/useScanSession'
+import ScanTimeline from './Components/ScanTimeline'
 import '@/packages/viewer/src/style.css'
 
 let viewerMainLoaded = false
 
 export default function ViewerView({ active }: { active: boolean }) {
+  const { viewerTreeId, closeViewerTree } = useScanSession()
+  const treeQuery = useScanTree(viewerTreeId)
+
   useEffect(() => {
     if (!viewerMainLoaded) {
       viewerMainLoaded = true
@@ -41,7 +47,7 @@ export default function ViewerView({ active }: { active: boolean }) {
 
       return () => cancelAnimationFrame(id)
     }
-  }, [active])
+  }, [active, viewerTreeId])
 
   return (
     <div
@@ -51,10 +57,25 @@ export default function ViewerView({ active }: { active: boolean }) {
     >
       <PageHeader
         icon="cube"
-        crumbs={[{ label: 'ShipHappens' }, { label: 'Viewer' }]}
+        crumbs={
+          viewerTreeId && treeQuery.data
+            ? [{ label: 'ShipHappens' }, { label: 'Viewer' }, { label: treeQuery.data.name }]
+            : [{ label: 'ShipHappens' }, { label: 'Viewer' }]
+        }
+        actions={
+          viewerTreeId ? (
+            <Button
+              small
+              icon="cross"
+              variant="minimal"
+              onClick={closeViewerTree}
+              text="Exit scan tree"
+            />
+          ) : undefined
+        }
       />
 
-      <div className="viewer-root bp6-dark flex-1">
+      <div className="viewer-root bp6-dark min-h-0 flex-1">
         <canvas id="gl" />
 
         <Navbar id="topbar" className="hidden">
@@ -2140,6 +2161,8 @@ export default function ViewerView({ active }: { active: boolean }) {
 
         <div id="err" className="hidden" />
       </div>
+
+      <ScanTimeline />
     </div>
   )
 }
