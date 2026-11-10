@@ -17,9 +17,8 @@ export default function Dashboard() {
 
   return (
     <AppShell>
-      {activeSection === 'viewer' ? (
-        <ViewerView />
-      ) : (
+      <ViewerView active={activeSection === 'viewer'} />
+      {activeSection !== 'viewer' && (
         <CenteredPage icon="home" crumbs={[{ label: 'ShipHappens' }, { label: 'Dashboard' }]}>
           <Card elevation={2} className="flex flex-col items-center gap-4 py-10 px-8 text-center max-w-md w-full bg-[#1c1c1c]">
             <Text className="text-h5 text-white/87">
