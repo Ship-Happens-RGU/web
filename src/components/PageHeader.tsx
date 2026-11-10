@@ -32,13 +32,13 @@ export default function PageHeader({ icon, crumbs, actions }: PageHeaderProps) {
   })
 
   return (
-    <Navbar className="flex h-12! min-h-12! shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-[#1c1c1c]! px-4 shadow-none!">
+    <Navbar className="flex h-16! min-h-16! shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-[#1c1c1c]! px-6 shadow-none!">
       <NavbarGroup
         align={Alignment.START}
-        className="flex h-full min-w-0 items-center gap-2 text-white/87"
+        className="flex h-full min-w-0 items-center gap-3 text-white/87"
       >
         {icon && (
-          <Icon icon={icon} size={16} className="shrink-0 text-[#30aedb]" />
+          <Icon icon={icon} size={18} className="shrink-0 text-[#30aedb]" />
         )}
 
         <Breadcrumbs items={items} className="min-w-0 flex-nowrap!" />
