@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { QUERY_KEYS } from '@/constants/queryKeys'
-import { deleteJson, postForm } from '@/services/api'
+import { deleteJson, postForm, type ServerUploadProgress } from '@/services/api'
 import type { Scan } from '@/types/models'
 
 export interface UploadScanInput {
@@ -11,6 +11,7 @@ export interface UploadScanInput {
   name?: string
   notes?: string
   onProgress?: (fraction: number) => void
+  onServerProgress?: (progress: ServerUploadProgress) => void
   signal?: AbortSignal
 }
 
@@ -19,7 +20,7 @@ export function useUploadScan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ treeId, file, scanDate, name, notes, onProgress, signal }: UploadScanInput) => {
+    mutationFn: ({ treeId, file, scanDate, name, notes, onProgress, onServerProgress, signal }: UploadScanInput) => {
       const form = new FormData()
       form.append('file', file)
       form.append('scanDate', scanDate.toISOString())
@@ -32,7 +33,7 @@ export function useUploadScan() {
         form.append('notes', notes)
       }
 
-      return postForm<Scan>(`/api/v1/scan-trees/${treeId}/scans`, form, { onProgress, signal })
+      return postForm<Scan>(`/api/v1/scan-trees/${treeId}/scans`, form, { onProgress, onServerProgress, signal })
     },
     onSuccess: (scan) => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.treeScans(scan.treeId) })

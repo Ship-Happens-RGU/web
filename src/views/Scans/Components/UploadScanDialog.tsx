@@ -16,6 +16,7 @@ import {
   TextArea,
 } from '@blueprintjs/core'
 import { useUploadScan } from '@/composables/ApiWrappers/Scans/useScanMutations'
+import type { ServerUploadProgress } from '@/services/api'
 import { mergeE57Files, type MergeProgress } from '@/services/scanMerger'
 import type { Scan, ScanTree } from '@/types/models'
 import { formatBytes, toLocalInputValue } from '@/utils/format'
@@ -36,6 +37,7 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
   const [scanDate, setScanDate] = useState(() => toLocalInputValue(new Date()))
   const [notes, setNotes] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [serverProgress, setServerProgress] = useState<ServerUploadProgress | null>(null)
   const [mergeProgress, setMergeProgress] = useState<MergeProgress | null>(null)
   const [isMerging, setIsMerging] = useState(false)
   const [mergeError, setMergeError] = useState<string | null>(null)
@@ -49,6 +51,7 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
     setScanDate(toLocalInputValue(new Date()))
     setNotes('')
     setUploadProgress(0)
+    setServerProgress(null)
     setMergeProgress(null)
     setIsMerging(false)
     setMergeError(null)
@@ -139,7 +142,15 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
         scanDate: date,
         name: name.trim() || undefined,
         notes: notes.trim() || undefined,
-        onProgress: setUploadProgress,
+        onProgress: (fraction) => {
+          setUploadProgress(fraction)
+          if (fraction >= 1) {
+            setServerProgress((prev) => prev ?? { phase: 'processing', message: 'Processing scan...', progress: 0.05 })
+          }
+        },
+        onServerProgress: (progress) => {
+          setServerProgress(progress)
+        },
         signal: controller.signal,
       },
       {
@@ -296,13 +307,58 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
           )}
 
           {upload.isPending && (
-            <div className="flex flex-col gap-1.5 my-2">
-              <ProgressBar intent={Intent.PRIMARY} value={uploadProgress < 1 ? uploadProgress : undefined} className="h-1.5!" />
-              <span className="text-caption text-white/60">
-                {uploadProgress < 1
-                  ? `Uploading to S3 (LocalStack)… ${Math.round(uploadProgress * 100)}%`
-                  : 'Committing metadata to Apache Iceberg…'}
-              </span>
+            <div className="flex flex-col gap-1.5 my-3 rounded border border-white/10 bg-[#161616] p-2.5">
+              {uploadProgress < 1 ? (
+                // Phase 1: Upload from browser to Java server
+                <>
+                  <div className="flex items-center justify-between text-caption">
+                    <span className="font-medium text-white/90">Step 1: Uploading to server</span>
+                    <span className="text-[#30aedb] font-mono">{Math.round(uploadProgress * 100)}%</span>
+                  </div>
+                  <ProgressBar intent={Intent.PRIMARY} value={uploadProgress} className="h-1.5!" />
+                  <span className="text-caption text-white/60">
+                    Uploading to cloud {Math.round(uploadProgress * 100)}%
+                  </span>
+                </>
+              ) : (
+                // Phase 2: Loading bar restarts once fully uploaded to Java
+                <>
+                  <div className="flex items-center justify-between text-caption">
+                    <span className="font-medium text-white/90">
+                      Step 2:{' '}
+                      {serverProgress?.phase === 'iceberg_commit'
+                        ? 'Committing to Iceberg'
+                        : serverProgress?.phase === 's3_upload'
+                          ? 'Uploading to S3'
+                          : 'Java Processing'}
+                    </span>
+                    <span className="text-[#30aedb] font-mono">
+                      {Math.round((serverProgress?.progress ?? 0.05) * 100)}%
+                    </span>
+                  </div>
+                  <ProgressBar
+                    intent={Intent.PRIMARY}
+                    value={serverProgress?.progress ?? 0.05}
+                    animate={serverProgress?.phase === 'processing' || serverProgress?.phase === 'iceberg_commit'}
+                    stripes={serverProgress?.phase === 'processing' || serverProgress?.phase === 'iceberg_commit'}
+                    className="h-1.5!"
+                  />
+                  <div className="flex items-center justify-between text-caption text-white/60">
+                    <span>
+                      {serverProgress?.phase === 's3_upload'
+                        ? `Uploading from Java to S3 storage… ${Math.round(serverProgress.progress * 100)}%`
+                        : serverProgress?.phase === 'iceberg_commit'
+                          ? 'Committing metadata to Apache Iceberg…'
+                          : serverProgress?.message ?? 'Processing scan in Java…'}
+                    </span>
+                    {serverProgress?.written && serverProgress?.total ? (
+                      <span className="font-mono text-white/40">
+                        {formatBytes(serverProgress.written)} / {formatBytes(serverProgress.total)}
+                      </span>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

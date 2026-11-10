@@ -40,14 +40,27 @@ export function deleteJson<T = void>(path: string): Promise<T> {
   return sendJson<T>('DELETE', path)
 }
 
+export interface ServerUploadProgress {
+  phase: 'processing' | 's3_upload' | 'iceberg_commit' | 'complete' | 'error'
+  message: string
+  progress: number
+  written?: number
+  total?: number
+  scan?: unknown
+}
+
 /**
- * POSTs multipart form data with upload progress (fetch can't report upload progress, XHR can).
+ * POSTs multipart form data with upload progress and server-side processing stream.
  * Error responses' { error } message is thrown.
  */
 export async function postForm<T>(
   path: string,
   form: FormData,
-  options: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
+  options: {
+    onProgress?: (fraction: number) => void
+    onServerProgress?: (progress: ServerUploadProgress) => void
+    signal?: AbortSignal
+  } = {},
 ): Promise<T> {
   const csrfToken = await ensureCsrfToken()
 
@@ -55,6 +68,7 @@ export async function postForm<T>(
     const xhr = new XMLHttpRequest()
     xhr.open('POST', path)
     xhr.withCredentials = true
+    xhr.setRequestHeader('Accept', 'application/x-ndjson, application/json')
 
     if (csrfToken) {
       xhr.setRequestHeader('X-XSRF-TOKEN', csrfToken)
@@ -66,7 +80,62 @@ export async function postForm<T>(
       }
     }
 
+    let processedChars = 0
+    let completedScan: T | null = null
+
+    const parseStream = () => {
+      const text = xhr.responseText || ''
+      if (text.length <= processedChars) return
+
+      const newContent = text.substring(processedChars)
+      const lines = newContent.split('\n')
+
+      if (!text.endsWith('\n')) {
+        lines.pop()
+      }
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        processedChars += line.length + 1
+        if (!trimmed) continue
+
+        try {
+          const parsed = JSON.parse(trimmed) as ServerUploadProgress
+          options.onServerProgress?.(parsed)
+
+          if (parsed.phase === 'complete' && parsed.scan) {
+            completedScan = parsed.scan as T
+          } else if (parsed.phase === 'error') {
+            throw new Error(parsed.message || 'Upload failed on server')
+          }
+        } catch (err: unknown) {
+          if ((err as Error)?.message !== 'Unexpected end of JSON input') {
+            throw err
+          }
+        }
+      }
+    }
+
+    xhr.onprogress = () => {
+      try {
+        parseStream()
+      } catch (err) {
+        reject(err)
+      }
+    }
+
     xhr.onload = () => {
+      try {
+        parseStream()
+      } catch (err) {
+        reject(err)
+      }
+
+      if (completedScan) {
+        resolve(completedScan)
+        return
+      }
+
       let body: unknown = null
 
       try {
