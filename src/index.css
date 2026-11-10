@@ -1,111 +1,53 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import 'tailwindcss';
+/* Blueprint must load after Tailwind's preflight so its component styles win */
+@import '@blueprintjs/core/lib/css/blueprint.css';
+@import '@blueprintjs/icons/lib/css/blueprint-icons.css';
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* Dark mode is the default: activate dark: utilities via the .dark class on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+html {
+  color-scheme: dark;
 }
 
 body {
-  margin: 0;
+  @apply bg-[#1c2127];
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+#root {
+  @apply min-h-svh;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+/* Pure white text in Blueprint's dark theme (instead of its default greys):
+   headings, body text, labels, inputs, icons and navbar all render white */
+.bp6-dark,
+.bp6-dark :is(h1, h2, h3, h4, h5, h6, p, label, small, li, td, th),
+.bp6-dark .bp6-heading,
+.bp6-dark .bp6-text-muted,
+.bp6-dark .bp6-text-disabled,
+.bp6-dark .bp6-form-helper-text,
+.bp6-dark .bp6-label,
+.bp6-dark .bp6-navbar,
+.bp6-dark .bp6-navbar-heading,
+.bp6-dark .bp6-input,
+.bp6-dark .bp6-input-group .bp6-icon {
+  color: #ffffff;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* Blueprint 6 colours most text (cards, Text, menus...) through these variables,
+   which its dark theme sets to grey */
+[data-bp-color-scheme='dark'],
+.bp6-dark {
+  --bp-typography-color-default-rest: #ffffff;
+  --bp-typography-color-default-hover: #ffffff;
+  --bp-typography-color-default-active: #ffffff;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+.bp6-dark body,
+.bp6-dark .bp6-card {
+  color: #ffffff;
+}
+
+.bp6-dark .bp6-input::placeholder {
+  color: rgba(255, 255, 255, 0.85);
 }
