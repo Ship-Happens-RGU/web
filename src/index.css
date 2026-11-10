@@ -6,48 +6,237 @@
 /* Dark mode is the default: activate dark: utilities via the .dark class on <html> */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Vision Brand Colours & Text Emphasis Shading Scheme */
+:root,
+[data-bp-color-scheme='dark'],
+.bp6-dark {
+  /* Vision Brand Colour Scheme */
+  --brand-primary: #1c1c1c;
+  --brand-primary-variant: #272727;
+  --brand-secondary: #0093c9;
+  --brand-secondary-variant: #30aedb;
+  --brand-background: #111111;
+  --brand-surface: #1c1c1c;
+  --brand-error: #b00020;
+  --brand-success: #00df3c;
+
+  /* On-Colour Foregrounds */
+  --brand-on-primary: #ffffff;
+  --brand-on-primary-variant: #ffffff;
+  --brand-on-secondary: #ffffff;
+  --brand-on-secondary-variant: #000000;
+  --brand-on-background: #ffffff;
+  --brand-on-surface: #ffffff;
+  --brand-on-error: #ffffff;
+  --brand-on-success: #000000;
+
+  /* Text Emphasis Shading Scheme (White: 87% High, 60% Medium, 38% Disabled) */
+  --text-high-emphasis: rgba(255, 255, 255, 0.87);
+  --text-medium-emphasis: rgba(255, 255, 255, 0.6);
+  --text-disabled: rgba(255, 255, 255, 0.38);
+
+  /* Map Vision Brand tokens into Blueprint 6 CSS variables to preserve Palantir component geometry & feel */
+  --bp-typography-family-default: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    blueprint-icons-16, sans-serif;
+
+  --bp-palette-black: #111111;
+  --bp-palette-white: #ffffff;
+  --bp-palette-dark-gray-1: #1c1c1c;
+  --bp-palette-dark-gray-2: #222222;
+  --bp-palette-dark-gray-3: #272727;
+  --bp-palette-dark-gray-4: #333333;
+  --bp-palette-dark-gray-5: #404040;
+
+  /* Secondary (#0093C9 / #30AEDB) mapped to Blueprint Primary Intent */
+  --bp-intent-primary-rest: #0093c9;
+  --bp-intent-primary-hover: #007fad;
+  --bp-intent-primary-active: #006b93;
+  --bp-intent-primary-disabled: rgba(0, 147, 201, 0.38);
+  --bp-intent-primary-foreground: #ffffff;
+
+  /* Error (#B00020) mapped to Blueprint Danger Intent */
+  --bp-intent-danger-rest: #b00020;
+  --bp-intent-danger-hover: #96001b;
+  --bp-intent-danger-active: #7a0016;
+  --bp-intent-danger-disabled: rgba(176, 0, 32, 0.38);
+  --bp-intent-danger-foreground: #ffffff;
+
+  /* Success (#00DF3C with #000000 foreground) mapped to Blueprint Success Intent */
+  --bp-intent-success-rest: #00df3c;
+  --bp-intent-success-hover: #00c234;
+  --bp-intent-success-active: #00a32c;
+  --bp-intent-success-disabled: rgba(0, 223, 60, 0.38);
+  --bp-intent-success-foreground: #000000;
+
+  /* Surface & Typography defaults */
+  --bp-surface-background-color-default-rest: #1c1c1c;
+  --bp-surface-background-color-default-hover: #272727;
+  --bp-surface-background-color-default-active: #303030;
+  --bp-surface-background-color-default-disabled: #111111;
+
+  --bp-typography-color-default-rest: var(--text-high-emphasis);
+  --bp-typography-color-default-hover: #ffffff;
+  --bp-typography-color-default-active: var(--text-high-emphasis);
+  --bp-typography-color-default-disabled: var(--text-disabled);
+  --bp-typography-color-muted: var(--text-medium-emphasis);
+  --bp-emphasis-focus-color: #30aedb;
+}
+
 html {
   color-scheme: dark;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 body {
-  @apply bg-[#1c2127];
+  background-color: var(--brand-background);
+  color: var(--text-high-emphasis);
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px; /* Body 2 - Roboto Regular 14 */
+  font-weight: 400;
 }
 
 #root {
   @apply min-h-svh;
 }
 
-/* Pure white text in Blueprint's dark theme (instead of its default greys):
-   headings, body text, labels, inputs, icons and navbar all render white */
-.bp6-dark,
-.bp6-dark :is(h1, h2, h3, h4, h5, h6, p, label, small, li, td, th),
-.bp6-dark .bp6-heading,
-.bp6-dark .bp6-text-muted,
-.bp6-dark .bp6-text-disabled,
-.bp6-dark .bp6-form-helper-text,
-.bp6-dark .bp6-label,
-.bp6-dark .bp6-navbar,
-.bp6-dark .bp6-navbar-heading,
-.bp6-dark .bp6-input,
-.bp6-dark .bp6-input-group .bp6-icon {
-  color: #ffffff;
+/* Blueprint Dark Surface alignments with Vision Brand Colours (#1C1C1C Surface, #272727 Primary Variant) */
+.bp6-navbar.bp6-dark,
+.bp6-dark .bp6-navbar {
+  background-color: var(--brand-primary);
 }
 
-/* Blueprint 6 colours most text (cards, Text, menus...) through these variables,
-   which its dark theme sets to grey */
-[data-bp-color-scheme='dark'],
-.bp6-dark {
-  --bp-typography-color-default-rest: #ffffff;
-  --bp-typography-color-default-hover: #ffffff;
-  --bp-typography-color-default-active: #ffffff;
-}
-
-.bp6-dark body,
+.bp6-card.bp6-dark,
 .bp6-dark .bp6-card {
-  color: #ffffff;
+  background-color: var(--brand-surface);
+  color: var(--text-high-emphasis);
+}
+
+.bp6-dark .bp6-input {
+  background-color: var(--brand-primary-variant);
+  color: var(--text-high-emphasis);
 }
 
 .bp6-dark .bp6-input::placeholder {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-medium-emphasis);
+}
+
+.bp6-dark .bp6-input:disabled {
+  color: var(--text-disabled);
+}
+
+.bp6-dark .bp6-input-group .bp6-icon {
+  color: var(--text-medium-emphasis);
+}
+
+/* Text Emphasis Shading Scheme in Blueprint Dark */
+.bp6-dark,
+.bp6-dark :is(h1, h2, h3, h4, h5, h6, p, label, li, td, th),
+.bp6-dark .bp6-heading,
+.bp6-dark .bp6-label,
+.bp6-dark .bp6-navbar,
+.bp6-dark .bp6-navbar-heading {
+  color: var(--text-high-emphasis);
+}
+
+.bp6-dark .bp6-text-muted,
+.bp6-dark .bp6-form-helper-text {
+  color: var(--text-medium-emphasis);
+}
+
+.bp6-dark .bp6-text-disabled {
+  color: var(--text-disabled);
+}
+
+/* Text Styles - Roboto Specification */
+h1.bp6-heading,
+.text-h1 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 300;
+  font-size: 60px;
+  line-height: 1.15;
+}
+
+h2.bp6-heading,
+.text-h2 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 300;
+  font-size: 48px;
+  line-height: 1.2;
+}
+
+h3.bp6-heading,
+.text-h3 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.25;
+}
+
+h4.bp6-heading,
+.text-h4 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+h5.bp6-heading,
+.text-h5 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+h6.bp6-heading,
+.text-h6 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.text-subtitle-1 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.text-subtitle-2 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.text-body-1 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+}
+
+.text-body-2 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.bp6-button {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.text-caption,
+small {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.text-overline {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }

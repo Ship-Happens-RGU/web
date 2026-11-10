@@ -1,23 +1,23 @@
 import type { ReactNode } from 'react'
 import { Alignment, Navbar, NavbarDivider, NavbarGroup } from '@blueprintjs/core'
-import oceaneeringLogo from '@/assets/oceaneering-logo.png'
 
-/** App header with vertically aligned logo, divider, and brand text. */
+/** App header with Vision logo (light/dark aware), divider, and brand text. */
 export default function Header({ children }: { children?: ReactNode }) {
   return (
-    <Navbar className="flex h-16! items-center justify-between px-6 bg-[#181c22] border-b border-slate-800">
-      <NavbarGroup className="flex h-full items-center gap-3.5">
-        <div className="flex items-center">
-          <img
-            src={oceaneeringLogo}
-            alt="Oceaneering"
-            className="block h-7 w-auto object-contain"
-          />
-        </div>
-        <NavbarDivider className="self-center m-0 h-5 border-l border-slate-600" />
-        <span className="text-xl font-bold text-white tracking-tight leading-none flex items-center select-none">
-          ShipHappens
-        </span>
+    <Navbar className="flex h-16! items-center justify-between px-6 bg-[#1C1C1C]">
+      <NavbarGroup className="flex h-full items-center gap-2">
+        <img
+          src="/Fixed SVGs/Vision black.svg"
+          alt="Vision"
+          className="h-5 w-auto object-contain dark:hidden"
+        />
+        <img
+          src="/Fixed SVGs/Vision white.svg"
+          alt="Vision"
+          className="hidden h-5 w-auto object-contain dark:block"
+        />
+        <NavbarDivider className="mx-0!" />
+        <span className="text-h5 text-white/87 tracking-tight">ShipHappens</span>
       </NavbarGroup>
       {children && (
         <NavbarGroup align={Alignment.END} className="flex h-full items-center gap-2">

@@ -5,26 +5,49 @@ import { useLogin } from '@/composables/ApiWrappers/Auth/useLogin'
 export function useLoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const login = useLogin()
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value)
+    if (formError) setFormError(null)
+  }
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value)
+    if (formError) setFormError(null)
+  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
 
-    if (!email.trim() || !password) {
-      setFormError('Enter your email and password to continue.')
+    if (!email.trim()) {
+      setFormError('Enter your email to continue.')
+      return
+    }
+
+    if (!showPassword) {
+      setFormError(null)
+      setShowPassword(true)
+      return
+    }
+
+    if (!password) {
+      setFormError('Enter your password to continue.')
       return
     }
 
     setFormError(null)
-    login.mutate({ email, password })
+    login.mutate({ email: email.trim(), password })
   }
 
   return {
     email,
-    setEmail,
+    setEmail: handleEmailChange,
     password,
-    setPassword,
+    setPassword: handlePasswordChange,
+    showPassword,
     error: formError ?? (login.isError ? login.error.message : null),
     inputsInvalid: !!formError,
     isSigningIn: login.isPending,

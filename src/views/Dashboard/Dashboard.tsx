@@ -12,7 +12,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-[#1c2127]">
+    <div className="flex h-svh flex-col overflow-hidden bg-[#111111]">
       <Header>
         <Button
           intent={Intent.DANGER}
@@ -26,11 +26,11 @@ export default function Dashboard() {
       </Header>
 
       <div className="flex flex-1 items-center justify-center p-6">
-        <Card elevation={2} className="flex flex-col items-center gap-4 py-10 px-8 text-center max-w-md w-full bg-[#252a31] border border-slate-700">
-          <Text className="text-xl font-bold dark:text-white">
+        <Card elevation={2} className="flex flex-col items-center gap-4 py-10 px-8 text-center max-w-md w-full bg-[#1C1C1C]">
+          <Text className="text-h5 text-white/87">
             Welcome{user.displayName ? `, ${user.displayName}` : ''}!
           </Text>
-          <Text className="text-sm opacity-70 dark:opacity-100 dark:text-white">
+          <Text className="text-body-2 text-white/60">
             Signed in as {user.email}
           </Text>
           <Button
@@ -38,7 +38,7 @@ export default function Dashboard() {
             icon="log-out"
             loading={logout.isPending}
             onClick={() => logout.mutate()}
-            className="mt-2"
+            className="mt-2 ml-0!"
           >
             Log out
           </Button>

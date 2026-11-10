@@ -1,27 +1,37 @@
-import { Button, Card, H1, InputGroup, Intent, Spinner, Text } from '@blueprintjs/core'
+import { Button, Card, H3, InputGroup, Intent, Spinner, Text } from '@blueprintjs/core'
 import brandCollage from '@/assets/brand-collage.png'
 import Header from '@/components/Header'
 import { useLoginForm } from './Composables/useLoginForm'
 
 export default function Login() {
-  const { email, setEmail, password, setPassword, error, inputsInvalid, isSigningIn, handleSubmit } = useLoginForm()
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    showPassword,
+    error,
+    inputsInvalid,
+    isSigningIn,
+    handleSubmit,
+  } = useLoginForm()
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-[#1c2127]">
+    <div className="flex h-svh flex-col overflow-hidden bg-[#111111]">
       <Header />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left Side: Login Form (50vw) */}
-        <div className="flex w-1/2 items-center justify-center overflow-hidden p-[8%]">
+        <div className="flex w-1/2 items-center justify-center overflow-hidden bg-[#1C1C1C] p-[8%]">
           {isSigningIn ? (
-            <Card elevation={2} className="flex flex-col items-center p-8 bg-[#252a31] border border-slate-700">
+            <Card elevation={2} className="flex flex-col items-center p-8 bg-[#272727]">
               <Spinner size={50} intent={Intent.PRIMARY} />
-              <Text className="text-sm text-slate-300 mt-4">Authenticating session...</Text>
+              <Text className="text-body-2 text-white/60 mt-4">Authenticating session...</Text>
             </Card>
           ) : (
             <div className="w-full max-w-sm">
               <div className="mb-6 text-center">
-                <H1 className="text-3xl! font-bold text-white mb-2">Sign in</H1>
-                <Text className="text-sm opacity-70 dark:opacity-100 text-slate-300">
+                <H3 className="text-h3 text-white/87 mb-2">Sign in</H3>
+                <Text className="text-body-2 text-white/60">
                   Sign in to continue to ShipHappens
                 </Text>
               </div>
@@ -39,19 +49,22 @@ export default function Login() {
                   autoFocus
                 />
 
-                <InputGroup
-                  large
-                  leftIcon="key"
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  intent={inputsInvalid && !password ? Intent.DANGER : undefined}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="w-full mb-1"
-                />
+                {showPassword && (
+                  <InputGroup
+                    large
+                    leftIcon="key"
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    intent={inputsInvalid && !password ? Intent.DANGER : undefined}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="w-full mb-1"
+                    autoFocus
+                  />
+                )}
 
                 {error && (
-                  <Text className="text-sm text-red-400">
+                  <Text className="text-body-2 text-[#ff5252]">
                     {error}
                   </Text>
                 )}
@@ -60,8 +73,8 @@ export default function Login() {
                   type="submit"
                   intent={Intent.PRIMARY}
                   large
-                  text="Log in"
-                  className="w-full mt-2"
+                  text={showPassword ? 'Log in' : 'Next'}
+                  className="w-full mt-2 ml-0!"
                 />
               </form>
             </div>
@@ -69,7 +82,7 @@ export default function Login() {
         </div>
 
         {/* Right Side: Brand Imagery (50vw) */}
-        <div className="w-1/2 h-full overflow-hidden bg-[#15191e] flex items-center justify-center p-6 border-l border-slate-800">
+        <div className="w-1/2 h-full overflow-hidden bg-[#111111] flex items-center justify-center p-6 border-l border-white/12">
           <img
             src={brandCollage}
             alt="Oceaneering technology"
