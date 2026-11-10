@@ -5,7 +5,7 @@ import { Alignment, Navbar, NavbarDivider, NavbarGroup } from '@blueprintjs/core
 export default function Header({ children }: { children?: ReactNode }) {
   return (
     <Navbar className="flex h-16! items-center justify-between px-6 bg-[#1C1C1C]">
-      <NavbarGroup className="flex h-full items-center gap-2">
+      <NavbarGroup className="flex h-full items-center gap-4">
         <img
           src="/Fixed SVGs/Vision black.svg"
           alt="Vision"

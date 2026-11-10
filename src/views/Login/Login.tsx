@@ -1,5 +1,5 @@
 import { Button, Card, H3, InputGroup, Intent, Spinner, Text } from '@blueprintjs/core'
-import brandCollage from '@/assets/brand-collage.png'
+import platformScan from '@/assets/3d-platform-scan.webp'
 import Header from '@/components/Header'
 import { useLoginForm } from './Composables/useLoginForm'
 
@@ -81,12 +81,12 @@ export default function Login() {
           )}
         </div>
 
-        {/* Right Side: Brand Imagery (50vw) */}
-        <div className="w-1/2 h-full overflow-hidden bg-[#111111] flex items-center justify-center p-6 border-l border-white/12">
+        {/* Right Side: 3D Platform Scan Imagery (50vw) */}
+        <div className="w-1/2 h-full overflow-hidden bg-black flex items-center justify-center border-l border-white/12">
           <img
-            src={brandCollage}
-            alt="Oceaneering technology"
-            className="block h-full w-full object-contain max-h-[85vh]"
+            src={platformScan}
+            alt="3D Point Cloud Image of Offshore Oil and Gas Platform"
+            className="block h-full w-full object-contain"
           />
         </div>
       </div>
