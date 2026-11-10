@@ -18,15 +18,24 @@ export default function Dashboard() {
   return (
     <AppShell>
       <ViewerView active={activeSection === 'viewer'} />
+
       {activeSection !== 'viewer' && (
-        <CenteredPage icon="home" crumbs={[{ label: 'ShipHappens' }, { label: 'Dashboard' }]}>
-          <Card elevation={2} className="flex flex-col items-center gap-4 py-10 px-8 text-center max-w-md w-full bg-[#1c1c1c]">
+        <CenteredPage
+          icon="home"
+          crumbs={[{ label: 'ShipHappens' }, { label: 'Dashboard' }]}
+        >
+          <Card
+            elevation={2}
+            className="flex w-full max-w-md flex-col items-center gap-4 bg-[#1c1c1c] px-8 py-10 text-center"
+          >
             <Text className="text-h5 text-white/87">
               Welcome{user.displayName ? `, ${user.displayName}` : ''}!
             </Text>
+
             <Text className="text-body-2 text-white/60">
               Signed in as {user.email}
             </Text>
+
             <Button
               intent={Intent.DANGER}
               icon="log-out"

@@ -9,13 +9,22 @@ interface SidebarButtonProps {
   disabled?: boolean
 }
 
-/**
- * A sidebar entry styled to the Vision Brand specification.
- * Icons stay anchored whether collapsed or expanded; when collapsed, the label appears in a right-hand tooltip.
- */
-export default function SidebarButton({ collapsed, icon, label, onClick, active, disabled }: SidebarButtonProps) {
+export default function SidebarButton({
+  collapsed,
+  icon,
+  label,
+  onClick,
+  active,
+  disabled,
+}: SidebarButtonProps) {
   return (
-    <Tooltip content={label} placement="right" disabled={!collapsed} targetTagName="div" fill={!collapsed}>
+    <Tooltip
+      content={label}
+      placement="right"
+      disabled={!collapsed}
+      targetTagName="div"
+      fill={!collapsed}
+    >
       <Button
         variant="minimal"
         fill={!collapsed}
@@ -35,4 +44,3 @@ export default function SidebarButton({ collapsed, icon, label, onClick, active,
     </Tooltip>
   )
 }
-

@@ -1,10 +1,30 @@
 import { useEffect } from 'react'
+import {
+  Alignment,
+  Button,
+  ButtonGroup,
+  Card,
+  H2,
+  H3,
+  HTMLSelect,
+  Intent,
+  Navbar,
+  NavbarDivider,
+  NavbarGroup,
+  Switch,
+  Tag,
+  Text,
+} from '@blueprintjs/core'
 import PageHeader from '@/components/PageHeader'
 import '@/packages/viewer/src/style.css'
 
 let viewerMainLoaded = false
 
-
+/**
+ * Embedded E57 Point Cloud Viewer tab built with @blueprintjs/core components,
+ * including the viewer library side control bar (#panel) and top bar (#topbar).
+ * Before a scan is opened, #drop displays only the single "View from file" Blueprint Button.
+ */
 export default function ViewerView({ active }: { active: boolean }) {
   useEffect(() => {
     if (!viewerMainLoaded) {
@@ -37,31 +57,40 @@ export default function ViewerView({ active }: { active: boolean }) {
       <div className="viewer-root bp6-dark flex-1">
         <canvas id="gl" />
 
-        <div id="topbar" className="bp6-navbar bp6-dark hidden">
-          <span className="name" id="tb-name">—</span>
-          <span className="pill hidden" id="tb-layer" />
-          <span className="dot" />
-          <span className="mono" id="tb-points">—</span>
-          <span className="dot" />
-          <span className="mono" id="tb-fps">—</span>
+        <Navbar id="topbar" className="hidden">
+          <NavbarGroup align={Alignment.START} className="flex items-center gap-2.5">
+            <Text className="name" id="tb-name">—</Text>
+            <Tag id="tb-layer" minimal className="hidden" />
+            <NavbarDivider />
+            <Text className="mono" id="tb-points">—</Text>
+            <NavbarDivider />
+            <Text className="mono" id="tb-fps">—</Text>
+          </NavbarGroup>
           <span className="spacer" />
-          <span className="pill hidden" id="tb-tool" />
-          <button id="tb-undo" className="ghost" disabled title="Undo (⌘Z)">Undo</button>
-          <button id="tb-redo" className="ghost" disabled title="Redo (⇧⌘Z)">Redo</button>
-          <button id="tb-save" className="ghost" disabled title="Save as… (⌘S)">Save as…</button>
-          <button id="tb-open" className="ghost" title="Open another scan (⌘O)">View from file</button>
-          <button id="tb-panel" className="ghost" title="Toggle panel (Tab)">Controls</button>
-        </div>
+          <NavbarGroup align={Alignment.END} className="flex items-center gap-2">
+            <Tag id="tb-tool" intent={Intent.PRIMARY} className="hidden" />
+            <Button id="tb-undo" size="small" disabled title="Undo (⌘Z)">Undo</Button>
+            <Button id="tb-redo" size="small" disabled title="Redo (⇧⌘Z)">Redo</Button>
+            <Button id="tb-save" size="small" disabled title="Save as… (⌘S)">Save as…</Button>
+            <Button id="tb-open" size="small" icon="document-open" title="Open another scan (⌘O)">View from file</Button>
+            <Button id="tb-panel" size="small" icon="panel-stats" title="Toggle panel (Tab)">Controls</Button>
+          </NavbarGroup>
+        </Navbar>
 
         <div id="drop" className="bg-[#111111]!">
           <div className="flex flex-col items-center justify-center">
-            <button id="pick" className="primary px-5! py-2.5! text-sm!">
+            <Button
+              id="pick"
+              intent={Intent.PRIMARY}
+              size="large"
+              icon="document-open"
+            >
               View from file
-            </button>
+            </Button>
             <p id="drop-lede" className="hidden" />
             <p id="drop-hint" className="hidden" />
             <div id="scan-card" className="hidden">
-              <button id="pick2" className="ghost wide">View from file</button>
+              <Button id="pick2" fill>View from file</Button>
             </div>
             <div id="cached" className="hidden">
               <ul id="cached-list" />
@@ -70,7 +99,7 @@ export default function ViewerView({ active }: { active: boolean }) {
         </div>
 
         <div id="loading" className="hidden">
-          <div className="card">
+          <Card elevation={3} className="card">
             <div className="scanrow"><span className="lab mono">SCAN</span><span id="ld-name">—</span></div>
             <div className="scanrow"><span className="lab mono">POINTS</span><span className="mono" id="ld-points">—</span></div>
             <div className="scanrow"><span className="lab mono">EXTENT</span><span className="mono" id="ld-extent">—</span></div>
@@ -78,20 +107,26 @@ export default function ViewerView({ active }: { active: boolean }) {
             <div className="scanrow"><span className="lab mono">FIELDS</span><span id="ld-fields">—</span></div>
             <div className="bar"><i id="ld-bar" /></div>
             <p className="statusline" id="ld-stat">opening…</p>
-          </div>
+          </Card>
         </div>
 
-        <aside id="panel" className="hidden">
+        <Card id="panel" elevation={2} className="hidden p-0!">
           <div id="grabber" aria-hidden="true"><i /></div>
+
           <div className="grp" data-grp="layers">
-            <h3>Layers</h3>
+            <H3>Layers</H3>
             <ul id="layer-list" className="mlist" />
-            <div className="seg">
-              <button id="k-layeradd" className="ghost">Add file…</button>
-              <button id="k-layerclone" className="ghost">Clone</button>
-            </div>
-            <button id="k-layermerge" className="ghost wide">Merge into active…</button>
-            <label className="row"><span>Tint this layer</span><input type="checkbox" id="k-layertint" /></label>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-layeradd" size="small">Add file…</Button>
+              <Button id="k-layerclone" size="small">Clone</Button>
+            </ButtonGroup>
+            <Button id="k-layermerge" fill size="small" className="mb-1.5">Merge into active…</Button>
+            <Switch
+              id="k-layertint"
+              label="Tint this layer"
+              alignIndicator={Alignment.END}
+              className="row flex! w-full items-center justify-between"
+            />
             <label className="row"><span>Colour</span><input type="color" id="k-layercolor" defaultValue="#66ccff" /></label>
             <p className="statusline" id="v-layers">—</p>
             <details className="sub">
@@ -101,16 +136,16 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="register">
-            <h3>Register</h3>
-            <label className="row"><span>Reference</span><select id="k-regref" /></label>
-            <div className="seg">
-              <button id="k-regcentres" className="ghost">Match centres</button>
-              <button id="k-regscales" className="ghost">Match scales</button>
-            </div>
+            <H3>Register</H3>
+            <label className="row"><span>Reference</span><HTMLSelect id="k-regref" /></label>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-regcentres" size="small">Match centres</Button>
+              <Button id="k-regscales" size="small">Match scales</Button>
+            </ButtonGroup>
             <label className="row"><span title="Pairs further apart than this many point spacings are ignored, and the limit tightens as it converges.">Max distance</span><input type="range" id="k-regdist" min="1" max="30" step="0.5" defaultValue="6" /><b className="mono" id="v-regdist">6</b></label>
             <label className="row"><span>Max iterations</span><input type="range" id="k-regiter" min="5" max="80" step="1" defaultValue="30" /><b className="mono" id="v-regiter">30</b></label>
-            <button id="k-regicp" className="primary wide">Fine registration (ICP)…</button>
-            <button id="k-regdistance" className="ghost wide">Distance to reference</button>
+            <Button id="k-regicp" intent={Intent.PRIMARY} fill size="small" className="mb-1.5">Fine registration (ICP)…</Button>
+            <Button id="k-regdistance" fill size="small" className="mb-1.5">Distance to reference</Button>
             <p className="statusline" id="v-register">—</p>
             <details className="sub">
               <summary>How this works</summary>
@@ -119,9 +154,9 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp">
-            <h3>Appearance</h3>
+            <H3>Appearance</H3>
             <label className="row"><span>Colour</span>
-              <select id="k-color" defaultValue="0">
+              <HTMLSelect id="k-color" defaultValue="0">
                 <option value="0">RGB</option>
                 <option value="1">Intensity</option>
                 <option value="2">RGB × Intensity</option>
@@ -129,25 +164,42 @@ export default function ViewerView({ active }: { active: boolean }) {
                 <option value="4">Normals</option>
                 <option value="5" id="k-color-sf" disabled>Scalar field</option>
                 <option value="6">Flat</option>
-              </select>
+              </HTMLSelect>
             </label>
             <label className="row"><span>Point size</span><input type="range" id="k-size" min="0.5" max="8" step="0.1" defaultValue="2.0" /><b className="mono" id="v-size">2.0</b></label>
             <label className="row"><span>Sizing</span>
-              <select id="k-sizemode" defaultValue="1"><option value="1">Adaptive</option><option value="0">Fixed</option></select>
+              <HTMLSelect id="k-sizemode" defaultValue="1"><option value="1">Adaptive</option><option value="0">Fixed</option></HTMLSelect>
             </label>
-            <label className="row"><span>Round points</span><input type="checkbox" id="k-round" defaultChecked /></label>
+            <Switch
+              id="k-round"
+              label="Round points"
+              alignIndicator={Alignment.END}
+              defaultChecked
+              className="row flex! w-full items-center justify-between"
+            />
           </div>
 
           <div className="grp">
-            <h3>Lighting</h3>
-            <label className="row"><span>EDL</span><input type="checkbox" id="k-edl" defaultChecked /></label>
+            <H3>Lighting</H3>
+            <Switch
+              id="k-edl"
+              label="EDL"
+              alignIndicator={Alignment.END}
+              defaultChecked
+              className="row flex! w-full items-center justify-between"
+            />
             <label className="row"><span>Strength</span><input type="range" id="k-edlstr" min="0" max="1.5" step="0.01" defaultValue="0.32" /><b className="mono" id="v-edlstr">0.32</b></label>
             <label className="row"><span>Radius</span><input type="range" id="k-edlrad" min="0.5" max="5" step="0.1" defaultValue="1.4" /><b className="mono" id="v-edlrad">1.4</b></label>
-            <label className="row"><span>Normal shading</span><input type="checkbox" id="k-nrm" /></label>
+            <Switch
+              id="k-nrm"
+              label="Normal shading"
+              alignIndicator={Alignment.END}
+              className="row flex! w-full items-center justify-between"
+            />
           </div>
 
           <div className="grp">
-            <h3>Tone</h3>
+            <H3>Tone</H3>
             <label className="row"><span>Brightness</span><input type="range" id="k-bright" min="0.2" max="3" step="0.01" defaultValue="1" /><b className="mono" id="v-bright">1.00</b></label>
             <label className="row"><span>Gamma</span><input type="range" id="k-gamma" min="0.4" max="2.4" step="0.01" defaultValue="1" /><b className="mono" id="v-gamma">1.00</b></label>
             <div className="row col">
@@ -162,85 +214,95 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp">
-            <h3>Clipping</h3>
+            <H3>Clipping</H3>
             <label className="row"><span>Height min</span><input type="range" id="k-zmin" min="0" max="1" step="0.005" defaultValue="0" /><b className="mono" id="v-zmin">—</b></label>
             <label className="row"><span>Height max</span><input type="range" id="k-zmax" min="0" max="1" step="0.005" defaultValue="1" /><b className="mono" id="v-zmax">—</b></label>
           </div>
 
           <div className="grp">
-            <h3>Performance</h3>
+            <H3>Performance</H3>
             <label className="row"><span>Points per frame</span>
-              <select id="k-budget" defaultValue="8000000">
+              <HTMLSelect id="k-budget" defaultValue="8000000">
                 <option value="1000000">1 M</option>
                 <option value="2000000">2 M</option>
                 <option value="4000000">4 M</option>
                 <option value="8000000">8 M</option>
                 <option value="16000000">16 M</option>
                 <option value="32000000">32 M</option>
-              </select>
+              </HTMLSelect>
             </label>
             <label className="row"><span>Density</span><input type="range" id="k-density" min="0.3" max="4" step="0.05" defaultValue="2" /><b className="mono" id="v-density">2.00</b></label>
             <label className="row"><span>Max point px</span><input type="range" id="k-maxpx" min="2" max="24" step="0.5" defaultValue="7" /><b className="mono" id="v-maxpx">7.0</b></label>
             <label className="row"><span>While moving</span><input type="range" id="k-moving" min="0.1" max="1" step="0.05" defaultValue="0.35" /><b className="mono" id="v-moving">0.35</b></label>
             <p className="statusline" id="v-stats">—</p>
             <label className="row"><span>In memory</span>
-              <select id="k-load" defaultValue="1">
+              <HTMLSelect id="k-load" defaultValue="1">
                 <option value="1">Everything</option>
                 <option value="2">1 in 2</option>
                 <option value="4">1 in 4</option>
                 <option value="10">1 in 10</option>
                 <option value="30">1 in 30</option>
-              </select>
+              </HTMLSelect>
             </label>
             <p className="statusline" id="v-loaded">—</p>
-            <div className="seg">
-              <button id="k-undo" className="ghost" disabled>Undo</button>
-              <button id="k-redo" className="ghost" disabled>Redo</button>
-            </div>
-            <button id="k-save" className="primary wide" disabled>Save as…</button>
-            <button id="k-reload" className="ghost wide">Reload</button>
-            <button id="k-open" className="ghost wide">Open another scan…</button>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-undo" size="small" disabled>Undo</Button>
+              <Button id="k-redo" size="small" disabled>Redo</Button>
+            </ButtonGroup>
+            <Button id="k-save" intent={Intent.PRIMARY} fill size="small" disabled className="mb-1.5">Save as…</Button>
+            <Button id="k-reload" fill size="small" className="mb-1.5">Reload</Button>
+            <Button id="k-open" fill size="small" className="mb-1.5">View from file…</Button>
             <p className="hint">Undo/redo cover crop and section edits. <b>Save as…</b> writes a copy of the current points to a file you choose, updates the on-device cache if there is one, and clears undo. <b>⌘Z</b> / <b>⇧⌘Z</b> / <b>⌘S</b>. Escape cancels a crop region.</p>
             <p className="statusline" id="v-hist">—</p>
           </div>
 
           <div className="grp" data-grp="crop">
-            <h3>Crop</h3>
+            <H3>Crop</H3>
             <label className="row"><span>Shape</span>
-              <select id="k-cropshape" defaultValue="box"><option value="box">Box</option><option value="sphere">Sphere</option><option value="slab">Slab</option></select>
+              <HTMLSelect id="k-cropshape" defaultValue="box"><option value="box">Box</option><option value="sphere">Sphere</option><option value="slab">Slab</option></HTMLSelect>
             </label>
-            <label className="row"><span>Show region</span><input type="checkbox" id="k-cropon" /></label>
-            <div className="seg">
-              <button id="k-cropkeep" className="ghost on">Keep inside</button>
-              <button id="k-cropdel" className="ghost">Remove inside</button>
-            </div>
-            <div className="seg">
-              <button id="k-cropmove" className="ghost on">Move</button>
-              <button id="k-croprotate" className="ghost">Rotate</button>
-              <button id="k-cropresize" className="ghost">Resize</button>
-            </div>
-            <label className="row"><span>Hide outside</span><input type="checkbox" id="k-crophide" /></label>
+            <Switch
+              id="k-cropon"
+              label="Show region"
+              alignIndicator={Alignment.END}
+              className="row flex! w-full items-center justify-between"
+            />
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-cropkeep" size="small" className="on">Keep inside</Button>
+              <Button id="k-cropdel" size="small">Remove inside</Button>
+            </ButtonGroup>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-cropmove" size="small" className="on">Move</Button>
+              <Button id="k-croprotate" size="small">Rotate</Button>
+              <Button id="k-cropresize" size="small">Resize</Button>
+            </ButtonGroup>
+            <Switch
+              id="k-crophide"
+              label="Hide outside"
+              alignIndicator={Alignment.END}
+              className="row flex! w-full items-center justify-between"
+            />
             <label className="row"><span>Size</span><input type="range" id="k-cropsize" min="0" max="1" step="0.002" defaultValue="0.35" /><b className="mono" id="v-cropsize">—</b></label>
             <label className="row box-only"><span>Depth</span><input type="range" id="k-cropsy" min="0" max="1" step="0.002" defaultValue="0.35" /><b className="mono" id="v-cropsy">—</b></label>
             <label className="row box-only"><span>Height</span><input type="range" id="k-cropsz" min="0" max="1" step="0.002" defaultValue="0.35" /><b className="mono" id="v-cropsz">—</b></label>
             <label className="row prism-only"><span>Prism depth</span><input type="range" id="k-prismdepth" min="0.004" max="1" step="0.004" defaultValue="1" /><b className="mono" id="v-prismdepth">—</b></label>
-            <button id="k-cropcentre" className="ghost wide">Centre on orbit point</button>
+            <Button id="k-cropcentre" fill size="small" className="mb-1.5">Centre on orbit point</Button>
 
             <p className="lab mono">NEW REGION</p>
             <div className="row"><span>Shape</span>
-              <select id="k-newshape" defaultValue="box"><option value="box">Box</option><option value="sphere">Sphere</option></select>
+              <HTMLSelect id="k-newshape" defaultValue="box"><option value="box">Box</option><option value="sphere">Sphere</option></HTMLSelect>
             </div>
-            <button id="k-place" className="ghost wide">Create region (S)</button>
-            <div className="seg region-active">
-              <button id="k-grow" className="ghost">Grow ×1.5</button>
-              <button id="k-shrink" className="ghost">Shrink ÷1.5</button>
-            </div>
-            <button id="k-fitcontents" className="ghost wide region-active">Fit to contents</button>
-            <button id="k-segment" className="ghost wide">Draw an outline… (⇧S)</button>
-            <div className="seg">
-              <button id="k-cropcancel" className="ghost">Cancel region</button>
-              <button id="k-cropapply" className="primary">Apply crop…</button>
-            </div>
+            <Button id="k-place" fill size="small" className="mb-1.5">Create region (S)</Button>
+            <ButtonGroup fill className="mb-2 region-active">
+              <Button id="k-grow" size="small">Grow ×1.5</Button>
+              <Button id="k-shrink" size="small">Shrink ÷1.5</Button>
+            </ButtonGroup>
+            <Button id="k-fitcontents" fill size="small" className="mb-1.5 region-active">Fit to contents</Button>
+            <Button id="k-segment" fill size="small" className="mb-1.5">Draw an outline… (⇧S)</Button>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-cropcancel" size="small">Cancel region</Button>
+              <Button id="k-cropapply" intent={Intent.PRIMARY} size="small">Apply crop…</Button>
+            </ButtonGroup>
             <p className="statusline" id="v-crop">—</p>
             <details className="sub">
               <summary>How this works</summary>
@@ -250,8 +312,8 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="sections">
-            <h3>Sections</h3>
-            <button id="k-secadd" className="ghost wide">Add section at orbit point</button>
+            <H3>Sections</H3>
+            <Button id="k-secadd" fill size="small" className="mb-1.5">Add section at orbit point</Button>
             <ul id="sec-list" className="mlist" />
             <p className="statusline" id="v-sections">—</p>
             <details className="sub">
@@ -261,31 +323,36 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="clean">
-            <h3>Clean</h3>
+            <H3>Clean</H3>
             <label className="row"><span title="How many nearest points each measurement looks at.">Neighbours</span><input type="range" id="k-ank2" min="3" max="64" step="1" defaultValue="16" /><b className="mono" id="v-ank2">16</b></label>
             <label className="row"><span title="How many standard deviations from the mean a point may be before it is dropped.">Strictness</span><input type="range" id="k-ansigma" min="0.5" max="4" step="0.1" defaultValue="1.0" /><b className="mono" id="v-ansigma">1.0 σ</b></label>
 
-            <button id="k-ansor" className="primary wide">Remove outliers…</button>
-            <button id="k-annoise" className="ghost wide">Remove noise…</button>
+            <Button id="k-ansor" intent={Intent.PRIMARY} fill size="small" className="mb-1.5">Remove outliers…</Button>
+            <Button id="k-annoise" fill size="small" className="mb-1.5">Remove noise…</Button>
             <details className="sub">
               <summary>Noise filter options</summary>
               <label className="row"><span title="CloudCompare calls this the neighbours option. A sphere is its default.">Neighbourhood</span>
-                <select id="k-annbmode" defaultValue="radius">
+                <HTMLSelect id="k-annbmode" defaultValue="radius">
                   <option value="radius">Sphere of a radius</option>
                   <option value="knn">Nearest neighbours</option>
-                </select>
+                </HTMLSelect>
               </label>
               <label className="row"><span>Radius</span><input type="range" id="k-annradius" min="0.01" max="2" step="0.01" defaultValue="0.15" /><b className="mono" id="v-annradius">0.15 m</b></label>
               <label className="row"><span title="CloudCompare calls this the error option. Relative is its default.">Threshold</span>
-                <select id="k-anerrmode" defaultValue="relative">
+                <HTMLSelect id="k-anerrmode" defaultValue="relative">
                   <option value="relative">Relative, in sigma</option>
                   <option value="absolute">Absolute distance</option>
-                </select>
+                </HTMLSelect>
               </label>
               <label className="row"><span>Absolute</span><input type="range" id="k-annabs" min="0.001" max="0.5" step="0.001" defaultValue="0.02" /><b className="mono" id="v-annabs">0.020 m</b></label>
-              <label className="row"><span title="Points with fewer than three neighbours cannot have a plane fitted, so the filter has nothing to judge them by.">Remove isolated points</span><input type="checkbox" id="k-annrip" /></label>
+              <Switch
+                id="k-annrip"
+                label="Remove isolated points"
+                alignIndicator={Alignment.END}
+                className="row flex! w-full items-center justify-between"
+              />
             </details>
-            <button id="k-andup" className="ghost wide">Remove duplicates…</button>
+            <Button id="k-andup" fill size="small" className="mb-1.5">Remove duplicates…</Button>
             <p className="statusline" id="v-clean">—</p>
             <p className="hint">CloudCompare&apos;s SOR and noise filters, same settings, same points removed.</p>
             <details className="sub">
@@ -297,7 +364,7 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="transform">
-            <h3>Transform</h3>
+            <H3>Transform</H3>
             <p className="statusline" id="v-transform">no transform</p>
 
             <p className="lab mono">TRANSLATE</p>
@@ -306,43 +373,48 @@ export default function ViewerView({ active }: { active: boolean }) {
               <input type="number" id="k-ty" step="0.1" defaultValue="0" aria-label="North / Y metres" />
               <input type="number" id="k-tz" step="0.1" defaultValue="0" aria-label="Up / Z metres" />
             </div>
-            <button id="k-tmove" className="ghost wide">Move by these metres</button>
+            <Button id="k-tmove" fill size="small" className="mb-1.5">Move by these metres</Button>
 
             <p className="lab mono">ROTATE</p>
             <div className="row"><span>Axis</span>
-              <select id="k-taxis" defaultValue="z"><option value="z">Z (plan)</option><option value="x">X</option><option value="y">Y</option></select>
+              <HTMLSelect id="k-taxis" defaultValue="z"><option value="z">Z (plan)</option><option value="x">X</option><option value="y">Y</option></HTMLSelect>
             </div>
             <div className="row"><span>Degrees</span><input type="number" id="k-tdeg" step="0.5" defaultValue="90" aria-label="degrees" /></div>
             <div className="row"><span>About</span>
-              <select id="k-tabout" defaultValue="centre"><option value="centre">Bounding-box centre</option><option value="origin">Origin</option></select>
+              <HTMLSelect id="k-tabout" defaultValue="centre"><option value="centre">Bounding-box centre</option><option value="origin">Origin</option></HTMLSelect>
             </div>
-            <button id="k-trot" className="ghost wide">Rotate</button>
+            <Button id="k-trot" fill size="small" className="mb-1.5">Rotate</Button>
 
             <p className="lab mono">SCALE</p>
             <div className="row"><span>Factor</span><input type="number" id="k-tscale" step="0.01" defaultValue="1" aria-label="uniform scale factor" /></div>
-            <button id="k-tscalego" className="ghost wide">Scale about the centre</button>
+            <Button id="k-tscalego" fill size="small" className="mb-1.5">Scale about the centre</Button>
 
             <p className="lab mono">FIT</p>
-            <button id="k-tlevel" className="ghost wide">Level (make horizontal)</button>
-            <button id="k-tcentre" className="ghost wide">Move centre to origin</button>
-            <button id="k-tmincorner" className="ghost wide">Move min corner to origin</button>
+            <Button id="k-tlevel" fill size="small" className="mb-1.5">Level (make horizontal)</Button>
+            <Button id="k-tcentre" fill size="small" className="mb-1.5">Move centre to origin</Button>
+            <Button id="k-tmincorner" fill size="small" className="mb-1.5">Move min corner to origin</Button>
 
             <p className="lab mono">BY HAND</p>
-            <label className="row"><span>Drag to move/rotate</span><input type="checkbox" id="k-tdrag" /></label>
-            <div className="seg">
-              <button id="k-tmodemove" className="ghost on">Move</button>
-              <button id="k-tmoderotate" className="ghost">Rotate</button>
-              <button id="k-tmodescale" className="ghost">Scale</button>
-            </div>
+            <Switch
+              id="k-tdrag"
+              label="Drag to move/rotate"
+              alignIndicator={Alignment.END}
+              className="row flex! w-full items-center justify-between"
+            />
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-tmodemove" size="small" className="on">Move</Button>
+              <Button id="k-tmoderotate" size="small">Rotate</Button>
+              <Button id="k-tmodescale" size="small">Scale</Button>
+            </ButtonGroup>
 
-            <div className="seg">
-              <button id="k-tmatrix" className="ghost">Apply matrix…</button>
-              <button id="k-treset" className="ghost">Reset</button>
-            </div>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-tmatrix" size="small">Apply matrix…</Button>
+              <Button id="k-treset" size="small">Reset</Button>
+            </ButtonGroup>
 
             <p className="lab mono">GLOBAL SHIFT</p>
             <p className="statusline" id="v-shift">—</p>
-            <button id="k-tshift" className="ghost wide">Edit global shift…</button>
+            <Button id="k-tshift" fill size="small" className="mb-1.5">Edit global shift…</Button>
             <details className="sub">
               <summary>How this works</summary>
               <p className="hint">Moves the whole cloud without touching a point. The records stay exactly as they are and a 4&times;4 matrix is applied when they are drawn, tested, analysed and exported — instant, lossless and undoable. <b>Save a copy</b> bakes it into the file.</p>
@@ -352,20 +424,20 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="analysis">
-            <h3>Analysis</h3>
+            <H3>Analysis</H3>
             <label className="row"><span title="How many nearest points each measurement looks at. Larger is smoother and slower.">Neighbours</span><input type="range" id="k-ank" min="6" max="64" step="1" defaultValue="16" /><b className="mono" id="v-ank">16</b></label>
 
             <p className="lab mono">NORMALS</p>
-            <div className="seg">
-              <button id="k-annorm" className="ghost">Compute</button>
-              <button id="k-anorient" className="ghost">Orient</button>
-              <button id="k-aninvert" className="ghost">Invert</button>
-            </div>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-annorm" size="small">Compute</Button>
+              <Button id="k-anorient" size="small">Orient</Button>
+              <Button id="k-aninvert" size="small">Invert</Button>
+            </ButtonGroup>
             <p className="hint">Reconstruction and shading both need normals. <b>Orient</b> turns them toward the scanner stations.</p>
 
             <p className="lab mono">MEASURE</p>
             <label className="row"><span>Feature</span>
-              <select id="k-anfeat" defaultValue="roughness">
+              <HTMLSelect id="k-anfeat" defaultValue="roughness">
                 <option value="roughness">Roughness</option>
                 <option value="curvature">Curvature</option>
                 <option value="planarity">Planarity</option>
@@ -381,16 +453,16 @@ export default function ViewerView({ active }: { active: boolean }) {
                 <option value="eig1">1st eigenvalue</option>
                 <option value="eig2">2nd eigenvalue</option>
                 <option value="eig3">3rd eigenvalue</option>
-              </select>
+              </HTMLSelect>
             </label>
-            <button id="k-anfeatgo" className="ghost wide">Compute feature</button>
+            <Button id="k-anfeatgo" fill size="small" className="mb-1.5">Compute feature</Button>
 
             <p className="lab mono">CLUSTER AND THIN</p>
             <label className="row"><span>Spacing</span><input type="range" id="k-anspace" min="0.01" max="2" step="0.01" defaultValue="0.1" /><b className="mono" id="v-anspace">0.10 m</b></label>
-            <div className="seg">
-              <button id="k-ancc" className="ghost">Components</button>
-              <button id="k-ansub" className="ghost">Thin…</button>
-            </div>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-ancc" size="small">Components</Button>
+              <Button id="k-ansub" size="small">Thin…</Button>
+            </ButtonGroup>
             <p className="hint"><b>Components</b> labels groups of points that touch within the spacing. <b>Thin</b> keeps one point per cube of that size.</p>
             <p className="statusline" id="v-analysis">—</p>
             <details className="sub">
@@ -400,41 +472,47 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="raster">
-            <h3>Raster</h3>
+            <H3>Raster</H3>
             <label className="row"><span>Cell size</span><input type="range" id="k-rcell" min="0.01" max="2" step="0.01" defaultValue="0.25" /><b className="mono" id="v-rcell">0.25 m</b></label>
             <label className="row"><span>Value</span>
-              <select id="k-rstat" defaultValue="max">
+              <HTMLSelect id="k-rstat" defaultValue="max">
                 <option value="max">Highest point</option>
                 <option value="min">Lowest point</option>
                 <option value="mean">Mean height</option>
                 <option value="density">Points per cell</option>
                 <option value="field">Mean scalar field</option>
-              </select>
+              </HTMLSelect>
             </label>
             <label className="row"><span>Along</span>
-              <select id="k-raxis" defaultValue="z"><option value="z">Z (a height model)</option><option value="x">X</option><option value="y">Y</option></select>
+              <HTMLSelect id="k-raxis" defaultValue="z"><option value="z">Z (a height model)</option><option value="x">X</option><option value="y">Y</option></HTMLSelect>
             </label>
             <label className="row"><span>Fill empty cells</span>
-              <select id="k-rfill" defaultValue="none"><option value="none">Leave empty</option><option value="nearest">Nearest</option><option value="idw">Inverse distance</option></select>
+              <HTMLSelect id="k-rfill" defaultValue="none"><option value="none">Leave empty</option><option value="nearest">Nearest</option><option value="idw">Inverse distance</option></HTMLSelect>
             </label>
-            <button id="k-rasterize" className="primary wide">Rasterize</button>
+            <Button id="k-rasterize" intent={Intent.PRIMARY} fill size="small" className="mb-1.5">Rasterize</Button>
             <p className="statusline" id="v-raster">—</p>
-            <label className="row raster-have"><span>Show the draped grid</span><input type="checkbox" id="k-rshow" defaultChecked /></label>
-            <button id="k-rsavepng" className="ghost wide raster-have">Save PNG + world file…</button>
+            <Switch
+              id="k-rshow"
+              label="Show the draped grid"
+              alignIndicator={Alignment.END}
+              defaultChecked
+              className="row raster-have items-center justify-between w-full"
+            />
+            <Button id="k-rsavepng" fill size="small" className="mb-1.5 raster-have">Save PNG + world file…</Button>
 
             <p className="lab mono">CONTOURS</p>
             <label className="row"><span>Interval</span><input type="range" id="k-cint" min="0.05" max="5" step="0.05" defaultValue="0.5" /><b className="mono" id="v-cint">0.50 m</b></label>
-            <button id="k-contours" className="ghost wide">Draw contours</button>
-            <div className="seg contour-have">
-              <button id="k-cdxf" className="ghost">Save DXF…</button>
-              <button id="k-cgeojson" className="ghost">Save GeoJSON…</button>
-            </div>
+            <Button id="k-contours" fill size="small" className="mb-1.5">Draw contours</Button>
+            <ButtonGroup fill className="mb-2 contour-have">
+              <Button id="k-cdxf" size="small">Save DXF…</Button>
+              <Button id="k-cgeojson" size="small">Save GeoJSON…</Button>
+            </ButtonGroup>
             <p className="statusline" id="v-contours">—</p>
 
             <p className="lab mono">VOLUME</p>
-            <label className="row"><span>Against</span><select id="k-vref" /></label>
+            <label className="row"><span>Against</span><HTMLSelect id="k-vref" /></label>
             <label className="row"><span>Plane height</span><input type="number" id="k-vplane" step="0.1" defaultValue="0" /></label>
-            <button id="k-volume" className="ghost wide">Measure the volume</button>
+            <Button id="k-volume" fill size="small" className="mb-1.5">Measure the volume</Button>
             <p className="statusline" id="v-volume">—</p>
             <details className="sub">
               <summary>How this works</summary>
@@ -443,34 +521,34 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="fit">
-            <h3>Fit</h3>
-            <div className="seg">
-              <button id="k-fitplane" className="ghost">Plane</button>
-              <button id="k-fitsphere" className="ghost">Sphere</button>
-            </div>
-            <div className="seg">
-              <button id="k-fitcyl" className="ghost">Cylinder</button>
-              <button id="k-fitcircle" className="ghost">Circle</button>
-            </div>
+            <H3>Fit</H3>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-fitplane" size="small">Plane</Button>
+              <Button id="k-fitsphere" size="small">Sphere</Button>
+            </ButtonGroup>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-fitcyl" size="small">Cylinder</Button>
+              <Button id="k-fitcircle" size="small">Circle</Button>
+            </ButtonGroup>
             <p className="statusline" id="v-fit">—</p>
-            <button id="k-fitclear" className="ghost wide">Clear the drawn shape</button>
+            <Button id="k-fitclear" fill size="small" className="mb-1.5">Clear the drawn shape</Button>
 
             <p className="lab mono">DETECT</p>
             <label className="row"><span title="How far a point may be from a shape and still count as part of it.">Tolerance</span><input type="range" id="k-dettol" min="0.002" max="0.2" step="0.002" defaultValue="0.02" /><b className="mono" id="v-dettol">0.02 m</b></label>
             <label className="row"><span>Min points</span><input type="range" id="k-detmin" min="100" max="20000" step="100" defaultValue="2000" /><b className="mono" id="v-detmin">2,000</b></label>
             <label className="row"><span>Look for</span>
-              <select id="k-detkinds" defaultValue="plane,sphere,cylinder">
+              <HTMLSelect id="k-detkinds" defaultValue="plane,sphere,cylinder">
                 <option value="plane">Planes</option>
                 <option value="plane,cylinder">Planes and cylinders</option>
                 <option value="plane,sphere,cylinder">Planes, spheres, cylinders</option>
-              </select>
+              </HTMLSelect>
             </label>
-            <button id="k-detect" className="primary wide">Detect shapes…</button>
+            <Button id="k-detect" intent={Intent.PRIMARY} fill size="small" className="mb-1.5">Detect shapes…</Button>
             <ul id="det-list" className="mlist" />
-            <div className="seg det-have">
-              <button id="k-detkeep" className="ghost">Keep only inliers</button>
-              <button id="k-detremove" className="ghost">Remove inliers</button>
-            </div>
+            <ButtonGroup fill className="mb-2 det-have">
+              <Button id="k-detkeep" size="small">Keep only inliers</Button>
+              <Button id="k-detremove" size="small">Remove inliers</Button>
+            </ButtonGroup>
             <details className="sub">
               <summary>How this works</summary>
               <p className="hint">Fits a primitive to the <b>active region&apos;s contents</b>, or to the whole layer when no region is active. The RMS is the number that says whether to believe it.</p>
@@ -478,18 +556,28 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp sf-have" data-grp="field">
-            <h3>Scalar field</h3>
+            <H3>Scalar field</H3>
             <p className="statusline" id="v-sfname">no field</p>
             <canvas id="sf-hist" height="52" />
             <label className="row"><span>Display from</span><input type="range" id="k-sfmin" min="0" max="1000" step="1" defaultValue="0" /><b className="mono" id="v-sfmin">—</b></label>
             <label className="row"><span>to</span><input type="range" id="k-sfmax" min="0" max="1000" step="1" defaultValue="1000" /><b className="mono" id="v-sfmax">—</b></label>
-            <button id="k-sfauto" className="ghost wide">Auto range (2–98%)</button>
-            <label className="row"><span>Filter points</span><input type="checkbox" id="k-sffilter" /></label>
+            <Button id="k-sfauto" fill size="small" className="mb-1.5">Auto range (2–98%)</Button>
+            <Switch
+              id="k-sffilter"
+              label="Filter points"
+              alignIndicator={Alignment.END}
+              className="row flex! w-full items-center justify-between"
+            />
             <label className="row sf-filtering"><span>Keep from</span><input type="range" id="k-sflo" min="0" max="1000" step="1" defaultValue="0" /><b className="mono" id="v-sflo">—</b></label>
             <label className="row sf-filtering"><span>to</span><input type="range" id="k-sfhi" min="0" max="1000" step="1" defaultValue="1000" /><b className="mono" id="v-sfhi">—</b></label>
-            <label className="row sf-filtering"><span>Hide the rest</span><input type="checkbox" id="k-sfhide" /></label>
-            <button id="k-sfapply" className="primary wide sf-filtering">Delete points outside…</button>
-            <button id="k-sfclear" className="ghost wide">Clear field</button>
+            <Switch
+              id="k-sfhide"
+              label="Hide the rest"
+              alignIndicator={Alignment.END}
+              className="row sf-filtering w-full items-center justify-between"
+            />
+            <Button id="k-sfapply" intent={Intent.PRIMARY} fill size="small" className="mb-1.5 sf-filtering">Delete points outside…</Button>
+            <Button id="k-sfclear" fill size="small" className="mb-1.5">Clear field</Button>
             <details className="sub">
               <summary>How this works</summary>
               <p className="hint">A field is one number per point. Colour by it with <b>Colour → Scalar field</b>, narrow the display range to see detail, or filter to keep only part of the cloud.</p>
@@ -497,55 +585,71 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="mesh">
-            <h3>Mesh</h3>
+            <H3>Mesh</H3>
 
             <label className="row"><span>Detail</span><input type="range" id="k-mvox" min="0.5" max="60" step="0.5" defaultValue="6" /><b className="mono" id="v-mvox">6 cm</b></label>
             <label className="row"><span>Smoothing</span><input type="range" id="k-msmooth" min="0" max="6" step="1" defaultValue="2" /><b className="mono" id="v-msmooth">2</b></label>
             <label className="row"><span>Fill gaps</span><input type="range" id="k-mtrunc" min="1" max="4" step="0.5" defaultValue="2" /><b className="mono" id="v-mtrunc">2.0</b></label>
-            <button id="k-mbuild" className="primary wide">Build from points…</button>
+            <Button id="k-mbuild" intent={Intent.PRIMARY} fill size="small" className="mb-1.5">Build from points…</Button>
             <p className="statusline" id="v-mesh">—</p>
 
             <p className="lab mono">SHOW</p>
-            <div className="seg">
-              <button id="k-disppoints" className="ghost on">Points</button>
-              <button id="k-dispmesh" className="ghost">Mesh</button>
-              <button id="k-dispboth" className="ghost">Both</button>
-            </div>
-            <label className="row"><span>Flat shading</span><input type="checkbox" id="k-mflat" /></label>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-disppoints" size="small" className="on">Points</Button>
+              <Button id="k-dispmesh" size="small">Mesh</Button>
+              <Button id="k-dispboth" size="small">Both</Button>
+            </ButtonGroup>
+            <Switch
+              id="k-mflat"
+              label="Flat shading"
+              alignIndicator={Alignment.END}
+              className="row flex! w-full items-center justify-between"
+            />
 
             <p className="lab mono mesh-have">EDIT</p>
-            <div className="seg mesh-have">
-              <button id="k-meshflip" className="ghost">Flip</button>
-              <button id="k-meshsmooth" className="ghost">Smooth</button>
-              <button id="k-meshdecim" className="ghost">Decimate</button>
-            </div>
+            <ButtonGroup fill className="mb-2 mesh-have">
+              <Button id="k-meshflip" size="small">Flip</Button>
+              <Button id="k-meshsmooth" size="small">Smooth</Button>
+              <Button id="k-meshdecim" size="small">Decimate</Button>
+            </ButtonGroup>
             <label className="row mesh-have"><span>Smooth passes</span><input type="range" id="k-meshiter" min="1" max="20" step="1" defaultValue="5" /><b className="mono" id="v-meshiter">5</b></label>
-            <label className="row mesh-have"><span>Keep volume</span><input type="checkbox" id="k-meshtaubin" defaultChecked /></label>
+            <Switch
+              id="k-meshtaubin"
+              label="Keep volume"
+              alignIndicator={Alignment.END}
+              defaultChecked
+              className="row mesh-have w-full items-center justify-between"
+            />
             <label className="row mesh-have"><span>Decimate to</span><input type="range" id="k-meshcell" min="0.5" max="100" step="0.5" defaultValue="10" /><b className="mono" id="v-meshcell">10 cm</b></label>
 
             <p className="lab mono mesh-have">MEASURE</p>
-            <button id="k-meshmeasure" className="ghost wide mesh-have">Area and volume</button>
+            <Button id="k-meshmeasure" fill size="small" className="mb-1.5 mesh-have">Area and volume</Button>
 
             <p className="lab mono mesh-have">COMPARE</p>
-            <label className="row mesh-have"><span>Distance to</span><select id="k-meshref" /></label>
-            <label className="row mesh-have"><span>Signed</span><input type="checkbox" id="k-meshsigned" /></label>
-            <button id="k-meshdist" className="ghost wide mesh-have">Distance from this cloud</button>
+            <label className="row mesh-have"><span>Distance to</span><HTMLSelect id="k-meshref" /></label>
+            <Switch
+              id="k-meshsigned"
+              label="Signed"
+              alignIndicator={Alignment.END}
+              className="row mesh-have w-full items-center justify-between"
+            />
+            <Button id="k-meshdist" fill size="small" className="mb-1.5 mesh-have">Distance from this cloud</Button>
 
             <p className="lab mono mesh-have">SAMPLE</p>
             <label className="row mesh-have"><span>Sample</span>
-              <select id="k-meshsmode" defaultValue="count"><option value="count">points in all</option><option value="density">points per m²</option></select>
+              <HTMLSelect id="k-meshsmode" defaultValue="count"><option value="count">points in all</option><option value="density">points per m²</option></HTMLSelect>
             </label>
             <label className="row mesh-have"><span>How many</span><input type="number" id="k-meshsval" min="100" step="1000" defaultValue="200000" /></label>
-            <button id="k-meshsample" className="ghost wide mesh-have">Sample to a new layer</button>
+            <Button id="k-meshsample" fill size="small" className="mb-1.5 mesh-have">Sample to a new layer</Button>
 
             <label className="row mesh-have"><span>Format</span>
-              <select id="k-meshfmt" defaultValue="ply"><option value="ply">PLY (binary)</option><option value="obj">OBJ</option><option value="stl">STL (binary)</option></select>
+              <HTMLSelect id="k-meshfmt" defaultValue="ply"><option value="ply">PLY (binary)</option><option value="obj">OBJ</option><option value="stl">STL (binary)</option></HTMLSelect>
             </label>
-            <button id="k-meshsave" className="primary wide mesh-have">Export mesh…</button>
-            <button id="k-mclear" className="ghost wide mesh-have">Discard mesh</button>
+            <Button id="k-meshsave" intent={Intent.PRIMARY} fill size="small" className="mb-1.5 mesh-have">Export mesh…</Button>
+            <Button id="k-mclear" fill size="small" className="mb-1.5 mesh-have">Discard mesh</Button>
             <p className="statusline" id="v-meshinfo">no mesh yet</p>
 
-            <button id="k-meshopen" className="ghost wide">Import a mesh…</button>
+            <Button id="k-meshopen" fill size="small" className="mb-1.5">Import a mesh…</Button>
             <p className="hint">Opens a PLY, OBJ or STL as a layer of its own, to compare against or edit.</p>
 
             <details className="sub">
@@ -557,34 +661,34 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="measure">
-            <h3>Measure</h3>
-            <div className="seg">
-              <button id="k-measure" className="ghost">Distance</button>
-              <button id="k-measureclear" className="ghost">Clear</button>
-            </div>
+            <H3>Measure</H3>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-measure" size="small">Distance</Button>
+              <Button id="k-measureclear" size="small">Clear</Button>
+            </ButtonGroup>
             <p className="hint">Click two points. <b>M</b> toggles. Single-click anywhere shows coordinates.</p>
             <ul id="measure-list" className="mlist mono" />
           </div>
 
           <div className="grp" data-grp="export">
-            <h3>Export</h3>
+            <H3>Export</H3>
             <label className="row"><span>Format</span>
-              <select id="k-fmt" defaultValue="e57">
+              <HTMLSelect id="k-fmt" defaultValue="e57">
                 <option value="e57">E57</option>
                 <option value="las">LAS 1.2</option>
                 <option value="laz">LAZ (compressed)</option>
                 <option value="ply">PLY (binary)</option>
-              </select>
+              </HTMLSelect>
             </label>
             <label className="row"><span>Keep</span>
-              <select id="k-expstride" defaultValue="1">
+              <HTMLSelect id="k-expstride" defaultValue="1">
                 <option value="1">Every point</option>
                 <option value="2">1 in 2</option>
                 <option value="4">1 in 4</option>
                 <option value="10">1 in 10</option>
-              </select>
+              </HTMLSelect>
             </label>
-            <button id="k-export" className="primary wide">Save a copy…</button>
+            <Button id="k-export" intent={Intent.PRIMARY} fill size="small" className="mb-1.5">Save a copy…</Button>
             <p className="statusline" id="v-export">—</p>
             <details className="sub">
               <summary>How this works</summary>
@@ -593,22 +697,28 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp" data-grp="stations">
-            <h3>Stations</h3>
-            <label className="row"><span>Show stations</span><input type="checkbox" id="k-stations" defaultChecked /></label>
+            <H3>Stations</H3>
+            <Switch
+              id="k-stations"
+              label="Show stations"
+              alignIndicator={Alignment.END}
+              defaultChecked
+              className="row flex! w-full items-center justify-between"
+            />
             <p className="statusline" id="v-stations">—</p>
             <div id="bubble-ui" className="hidden">
               <label className="row"><span>Points over photo</span><input type="range" id="k-blend" min="0" max="1" step="0.01" defaultValue="0.35" /><b className="mono" id="v-blend">0.35</b></label>
-              <button id="k-bubble-exit" className="ghost wide">Leave photo</button>
+              <Button id="k-bubble-exit" fill size="small" className="mb-1.5">Leave photo</Button>
             </div>
             <p className="hint">Click a station marker to look around its 360° photo. Walk away and it fades.</p>
           </div>
 
           <div className="grp" data-grp="cache">
-            <h3>Cache</h3>
+            <H3>Cache</H3>
             <p className="statusline" id="v-cache">—</p>
-            <button id="k-cache" className="ghost wide">Cache this scan on this device</button>
-            <button id="k-cacheremove" className="ghost wide hidden">Remove from cache</button>
-            <button id="k-viewlink" className="ghost wide">Copy view link</button>
+            <Button id="k-cache" fill size="small" className="mb-1.5">Cache this scan on this device</Button>
+            <Button id="k-cacheremove" fill size="small" className="mb-1.5 hidden">Remove from cache</Button>
+            <Button id="k-viewlink" fill size="small" className="mb-1.5">Copy view link</Button>
             <details className="sub">
               <summary>How this works</summary>
               <p className="hint">Writes decoded cells on this device so the next open is instant. <b>Save</b> (in Performance) also updates this cache after a crop, and clears undo.</p>
@@ -616,51 +726,63 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
 
           <div className="grp">
-            <h3>View</h3>
-            <div className="seg">
-              <button id="k-orbit" className="ghost on">Orbit</button>
-              <button id="k-fly" className="ghost">Fly</button>
-            </div>
+            <H3>View</H3>
+            <ButtonGroup fill className="mb-2">
+              <Button id="k-orbit" size="small" className="on">Orbit</Button>
+              <Button id="k-fly" size="small">Fly</Button>
+            </ButtonGroup>
             <label className="row"><span>Fly speed</span><input type="range" id="k-flyspeed" min="0.1" max="30" step="0.1" defaultValue="2" /><b className="mono" id="v-flyspeed">2.0</b></label>
-            <button id="k-top" className="ghost wide">Top down</button>
-            <button id="k-fit" className="ghost wide">Fit to cloud</button>
+            <Button id="k-top" fill size="small" className="mb-1.5">Top down</Button>
+            <Button id="k-fit" fill size="small" className="mb-1.5">Fit to cloud</Button>
             <p className="hint" id="v-navhint">Drag to orbit · scroll zooms toward the cursor · <b>double-click</b> a point to orbit around it</p>
           </div>
-        </aside>
+        </Card>
 
-        <div id="toolbar" className="hidden">
-          <button data-tool="orbit" className="on">Orbit</button>
-          <button data-tool="fly">Fly</button>
-          <button data-tool="measure">Measure</button>
-          <button data-tool="segment">Region</button>
-          <button data-tool="crop">Crop</button>
-          <button data-tool="photo" className="hidden">Leave photo</button>
-        </div>
+        <ButtonGroup id="toolbar" className="hidden">
+          <Button data-tool="orbit" size="small" className="on">Orbit</Button>
+          <Button data-tool="fly" size="small">Fly</Button>
+          <Button data-tool="measure" size="small">Measure</Button>
+          <Button data-tool="segment" size="small">Region</Button>
+          <Button data-tool="crop" size="small">Crop</Button>
+          <Button data-tool="photo" size="small" className="hidden">Leave photo</Button>
+        </ButtonGroup>
         <div id="joy" className="hidden">
           <div className="pad">
-            <button data-key="w" className="up">▲</button>
-            <button data-key="a" className="left">◀</button>
-            <button data-key="d" className="right">▶</button>
-            <button data-key="s" className="down">▼</button>
+            <Button data-key="w" className="up">▲</Button>
+            <Button data-key="a" className="left">◀</Button>
+            <Button data-key="d" className="right">▶</Button>
+            <Button data-key="s" className="down">▼</Button>
           </div>
-          <div className="vert"><button data-key="e">up</button><button data-key="q">down</button></div>
+          <div className="vert"><Button data-key="e">up</Button><Button data-key="q">down</Button></div>
         </div>
         <svg id="seg" className="hidden"><polygon id="seg-fill" /><polyline id="seg-line" /></svg>
-        <div id="placebar" className="hidden">
-          <span className="mono" id="place-hint">Click a point to place a region · Esc cancels</span>
-          <button id="place-cancel" className="ghost">Cancel</button>
-        </div>
-        <div id="segbar" className="hidden">
-          <span className="mono" id="seg-hint">Click to trace a shape · double-click to close · Esc to cancel</span>
-          <button id="seg-region" className="primary" disabled>Create region</button>
-          <button id="seg-in" className="ghost" disabled>Keep inside now</button>
-          <button id="seg-out" className="ghost" disabled>Remove inside now</button>
-          <button id="seg-cancel" className="ghost">Cancel</button>
-        </div>
+        <Card id="placebar" elevation={2} className="hidden">
+          <Text className="mono" id="place-hint">Click a point to place a region · Esc cancels</Text>
+          <Button id="place-cancel" size="small">Cancel</Button>
+        </Card>
+        <Card id="segbar" elevation={2} className="hidden">
+          <Text className="mono" id="seg-hint">Click to trace a shape · double-click to close · Esc to cancel</Text>
+          <Button id="seg-region" intent={Intent.PRIMARY} size="small" disabled>Create region</Button>
+          <Button id="seg-in" size="small" disabled>Keep inside now</Button>
+          <Button id="seg-out" size="small" disabled>Remove inside now</Button>
+          <Button id="seg-cancel" size="small">Cancel</Button>
+        </Card>
         <div id="coord" className="mono hidden" />
         <div id="labels" />
-        <div id="modal" className="hidden"><div className="card"><h2 id="modal-title" /><div id="modal-body" /><div className="btns" id="modal-btns" /></div></div>
-        <div id="busy" className="hidden"><div className="card"><p id="busy-text">Working…</p><div className="bar"><i id="busy-bar" /></div><button id="busy-stop" className="ghost wide hidden">Cancel</button></div></div>
+        <div id="modal" className="hidden">
+          <Card elevation={4} className="card">
+            <H2 id="modal-title" />
+            <div id="modal-body" />
+            <div className="btns" id="modal-btns" />
+          </Card>
+        </div>
+        <div id="busy" className="hidden">
+          <Card elevation={4} className="card">
+            <Text id="busy-text">Working…</Text>
+            <div className="bar"><i id="busy-bar" /></div>
+            <Button id="busy-stop" fill size="small" className="mt-2.5 hidden">Cancel</Button>
+          </Card>
+        </div>
         <div id="err" className="hidden" />
       </div>
     </div>

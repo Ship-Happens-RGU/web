@@ -2,11 +2,6 @@ import { Classes } from '@blueprintjs/core'
 import SidebarButton from './SidebarButton'
 import { useSidebar } from './Composables/useSidebar'
 
-/**
- * Collapsible app sidebar ported from AberWest KeyStone and adapted to the
- * Vision Brand design philosophy (#1C1C1C primary surface, #272727 primary variant,
- * #0093C9 / #30AEDB secondary accent, and 87%/60%/38% white text emphasis shading).
- */
 export default function Sidebar() {
   const { collapsed, toggleCollapsed, dashboard, viewer, admin } = useSidebar()
 
@@ -22,7 +17,7 @@ export default function Sidebar() {
         }`}
       >
         {collapsed ? (
-          <div className="h-5 w-5 overflow-hidden shrink-0">
+          <div className="h-5 w-5 shrink-0 overflow-hidden">
             <img
               src="/Fixed SVGs/Vision white.svg"
               alt="Vision"
@@ -46,6 +41,7 @@ export default function Sidebar() {
           active={dashboard.active}
           onClick={dashboard.open}
         />
+
         <SidebarButton
           collapsed={collapsed}
           icon="cube"
@@ -64,6 +60,7 @@ export default function Sidebar() {
           disabled={admin.disabled}
           onClick={admin.open}
         />
+
         <SidebarButton
           collapsed={collapsed}
           icon={collapsed ? 'menu-open' : 'menu-closed'}
@@ -74,4 +71,3 @@ export default function Sidebar() {
     </aside>
   )
 }
-

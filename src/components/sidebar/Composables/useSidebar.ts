@@ -34,12 +34,11 @@ function setSidebarState(partial: Partial<SidebarStoreState>) {
   emitChange()
 }
 
-/**
- * Shared sidebar state and navigation actions across the app shell.
- * Starts collapsed as a narrow dark icon rail and expands to reveal labels.
- */
 export function useSidebar() {
-  const { collapsed, activeSection } = useSyncExternalStore(subscribe, getSnapshot)
+  const { collapsed, activeSection } = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+  )
 
   return {
     collapsed,
