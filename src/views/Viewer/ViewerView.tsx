@@ -112,6 +112,16 @@ export default function ViewerView({ active }: { active: boolean }) {
             >
               Controls
             </Button>
+
+            <Button
+              id="tb-close"
+              size="small"
+              intent={Intent.DANGER}
+              icon="cross"
+              title="Close scan"
+            >
+              Close scan
+            </Button>
           </NavbarGroup>
         </Navbar>
 
@@ -604,6 +614,16 @@ export default function ViewerView({ active }: { active: boolean }) {
 
             <Button id="k-open" fill size="small" className="mb-1.5">
               View from file…
+            </Button>
+
+            <Button
+              id="k-close"
+              intent={Intent.DANGER}
+              fill
+              size="small"
+              className="mb-1.5"
+            >
+              Close scan
             </Button>
 
             <p className="hint">
