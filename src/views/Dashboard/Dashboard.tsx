@@ -1,7 +1,8 @@
 import { Button, Card, Intent, Text } from '@blueprintjs/core'
-import Header from '@/components/Header'
 import { useLogout } from '@/composables/ApiWrappers/Auth/useLogout'
 import { useMe } from '@/composables/ApiWrappers/Auth/useMe'
+import AppShell from '@/layouts/AppShell'
+import CenteredPage from '@/layouts/CenteredPage'
 
 export default function Dashboard() {
   const user = useMe().data
@@ -12,21 +13,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-[#111111]">
-      <Header>
-        <Button
-          intent={Intent.DANGER}
-          minimal
-          icon="log-out"
-          loading={logout.isPending}
-          onClick={() => logout.mutate()}
-        >
-          Log out
-        </Button>
-      </Header>
-
-      <div className="flex flex-1 items-center justify-center p-6">
-        <Card elevation={2} className="flex flex-col items-center gap-4 py-10 px-8 text-center max-w-md w-full bg-[#1C1C1C]">
+    <AppShell>
+      <CenteredPage icon="home" crumbs={[{ label: 'ShipHappens' }, { label: 'Dashboard' }]}>
+        <Card elevation={2} className="flex flex-col items-center gap-4 py-10 px-8 text-center max-w-md w-full bg-[#1c1c1c]">
           <Text className="text-h5 text-white/87">
             Welcome{user.displayName ? `, ${user.displayName}` : ''}!
           </Text>
@@ -43,7 +32,7 @@ export default function Dashboard() {
             Log out
           </Button>
         </Card>
-      </div>
-    </div>
+      </CenteredPage>
+    </AppShell>
   )
 }
