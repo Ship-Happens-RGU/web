@@ -141,29 +141,29 @@ export default function ViewerView({ active }: { active: boolean }) {
           </div>
         </div>
 
-        <div id="loading" className="hidden">
+        <div id="loading" className="hidden over">
           <Card elevation={3} className="card">
-            <div className="scanrow">
+            <div className="scanrow hidden">
               <span className="lab mono">SCAN</span>
               <span id="ld-name">—</span>
             </div>
 
-            <div className="scanrow">
+            <div className="scanrow hidden">
               <span className="lab mono">POINTS</span>
               <span className="mono" id="ld-points">—</span>
             </div>
 
-            <div className="scanrow">
+            <div className="scanrow hidden">
               <span className="lab mono">EXTENT</span>
               <span className="mono" id="ld-extent">—</span>
             </div>
 
-            <div className="scanrow">
+            <div className="scanrow hidden">
               <span className="lab mono">SENSOR</span>
               <span id="ld-sensor">—</span>
             </div>
 
-            <div className="scanrow">
+            <div className="scanrow hidden">
               <span className="lab mono">FIELDS</span>
               <span id="ld-fields">—</span>
             </div>
