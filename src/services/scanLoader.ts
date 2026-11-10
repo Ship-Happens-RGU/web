@@ -100,11 +100,89 @@ export async function downloadScan(
   return file
 }
 
-/** Downloads a scan and opens it in the viewer, replacing what is shown. */
+/** Streams a scan directly into the viewer via HTTP Range requests (or downloads small/mesh files). */
 export async function openScanInViewer(
   scan: Scan,
   options: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
 ): Promise<void> {
+  const cached = cache.get(scan.id)
+
+  if (cached) {
+    const app = await getViewerApp()
+
+    if (options.signal?.aborted) {
+      return
+    }
+
+    remember(scan.id, cached)
+    options.onProgress?.(1)
+    await app.openFile(cached)
+
+    return
+  }
+
+  const ext = scan.fileName.toLowerCase().split('.').pop() ?? ''
+  const isStreamableCloud = ['e57', 'las', 'laz', 'ply', 'ptx'].includes(ext) && scan.fileSize > 4 * 1024 * 1024
+
+  if (isStreamableCloud) {
+    const remoteUrl = `/api/v1/scans/${scan.id}/file`
+    const headEnd = Math.min(65535, Math.max(0, scan.fileSize - 1))
+    const [app, headResp] = await Promise.all([
+      getViewerApp(),
+      fetch(remoteUrl, {
+        credentials: 'include',
+        headers: { Range: `bytes=0-${headEnd}` },
+        signal: options.signal,
+      }),
+    ])
+
+    if (options.signal?.aborted) {
+      return
+    }
+
+    if (headResp.status === 206) {
+      const headBuf = await headResp.arrayBuffer()
+
+      if (options.signal?.aborted) {
+        return
+      }
+
+      const headFile = new File([headBuf], scan.fileName, {
+        type: 'application/octet-stream',
+        lastModified: Date.parse(scan.uploadedAt) || 0,
+      })
+
+      await new Promise<void>((resolve, reject) => {
+        const onAbort = () => {
+          reject(new DOMException('Aborted', 'AbortError'))
+        }
+
+        options.signal?.addEventListener('abort', onAbort, { once: true })
+
+        void app
+          .openFile(headFile, {
+            remoteUrl,
+            remoteSize: scan.fileSize,
+            scanId: scan.id,
+            onProgress: (fraction: number) => {
+              options.onProgress?.(fraction)
+
+              if (fraction >= 1) {
+                options.signal?.removeEventListener('abort', onAbort)
+                resolve()
+              }
+            },
+          })
+          .catch((err) => {
+            options.signal?.removeEventListener('abort', onAbort)
+            reject(err)
+          })
+      })
+
+      return
+    }
+  }
+
   const [app, file] = await Promise.all([getViewerApp(), downloadScan(scan, options)])
 
   if (options.signal?.aborted) {
