@@ -80,23 +80,20 @@ export async function postForm<T>(
       }
     }
 
-    let processedChars = 0
+    let processedLength = 0
     let completedScan: T | null = null
 
     const parseStream = () => {
       const text = xhr.responseText || ''
-      if (text.length <= processedChars) return
+      const lastNewline = text.lastIndexOf('\n')
+      if (lastNewline < processedLength) return
 
-      const newContent = text.substring(processedChars)
-      const lines = newContent.split('\n')
+      const completeChunk = text.substring(processedLength, lastNewline)
+      processedLength = lastNewline + 1
 
-      if (!text.endsWith('\n')) {
-        lines.pop()
-      }
-
+      const lines = completeChunk.split('\n')
       for (const line of lines) {
         const trimmed = line.trim()
-        processedChars += line.length + 1
         if (!trimmed) continue
 
         try {
