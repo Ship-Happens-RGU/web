@@ -1,0 +1,3 @@
+[submodule "src/packages/viewer"]
+	path = src/packages/viewer
+	url = https://github.com/Ship-Happens-RGU/viewer.git
