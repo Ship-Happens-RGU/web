@@ -168,7 +168,7 @@ export default function ScanTimeline() {
           <div className="flex items-center gap-1.5 font-medium text-white/90">
             <Icon icon="folder-open" size={14} className="text-[#30aedb]" />
             <span className="max-w-[180px] truncate">{treeQuery.data?.name ?? 'Scan Tree'}</span>
-            <Tag minimal size="small" intent={Intent.PRIMARY}>
+            <Tag minimal intent={Intent.PRIMARY}>
               {scans.length} {scans.length === 1 ? 'scan' : 'scans'}
             </Tag>
           </div>
@@ -347,7 +347,6 @@ export default function ScanTimeline() {
 
                     <Tag
                       minimal
-                      size="small"
                       intent={isSelected ? Intent.PRIMARY : Intent.NONE}
                       className="font-mono text-[10px]"
                     >

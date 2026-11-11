@@ -5,9 +5,16 @@
 import type { Scan } from '@/types/models'
 
 interface ViewerApp {
-  openFile: (file: File, handle?: unknown, add?: boolean) => Promise<void>
+  openFile: (
+    file: File,
+    handle?: unknown,
+    add?: boolean,
+    compare?: boolean,
+    compareOpacity?: number,
+  ) => Promise<void>
   confirmReplace: () => Promise<boolean>
   closeScan: () => Promise<void>
+  removeLayer?: (layer: unknown, ask?: boolean) => Promise<void>
 }
 
 /** Recently opened scans stay in memory so scrubbing back and forth on the timeline is instant. */
@@ -103,7 +110,13 @@ export async function downloadScan(
 /** Streams a scan directly into the viewer via HTTP Range requests (or downloads small/mesh files). */
 export async function openScanInViewer(
   scan: Scan,
-  options: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
+  options: {
+    onProgress?: (fraction: number) => void
+    signal?: AbortSignal
+    add?: boolean
+    compare?: boolean
+    compareOpacity?: number
+  } = {},
 ): Promise<void> {
   const cached = cache.get(scan.id)
 
@@ -116,7 +129,7 @@ export async function openScanInViewer(
 
     remember(scan.id, cached)
     options.onProgress?.(1)
-    await app.openFile(cached)
+    await app.openFile(cached, undefined, options.add, options.compare, options.compareOpacity)
 
     return
   }
@@ -160,19 +173,25 @@ export async function openScanInViewer(
         options.signal?.addEventListener('abort', onAbort, { once: true })
 
         void app
-          .openFile(headFile, {
-            remoteUrl,
-            remoteSize: scan.fileSize,
-            scanId: scan.id,
-            onProgress: (fraction: number) => {
-              options.onProgress?.(fraction)
+          .openFile(
+            headFile,
+            {
+              remoteUrl,
+              remoteSize: scan.fileSize,
+              scanId: scan.id,
+              onProgress: (fraction: number) => {
+                options.onProgress?.(fraction)
 
-              if (fraction >= 1) {
-                options.signal?.removeEventListener('abort', onAbort)
-                resolve()
-              }
+                if (fraction >= 1) {
+                  options.signal?.removeEventListener('abort', onAbort)
+                  resolve()
+                }
+              },
             },
-          })
+            options.add,
+            options.compare,
+            options.compareOpacity,
+          )
           .catch((err) => {
             options.signal?.removeEventListener('abort', onAbort)
             reject(err)
@@ -189,6 +208,6 @@ export async function openScanInViewer(
     return
   }
 
-  await app.openFile(file)
+  await app.openFile(file, undefined, options.add, options.compare, options.compareOpacity)
 }
 

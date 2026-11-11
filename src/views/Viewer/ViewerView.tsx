@@ -1,9 +1,15 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alignment,
   Button,
   ButtonGroup,
+  Callout,
   Card,
+  Classes,
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  FormGroup,
   H2,
   H3,
   HTMLSelect,
@@ -11,21 +17,160 @@ import {
   Navbar,
   NavbarDivider,
   NavbarGroup,
+  ProgressBar,
+  Slider,
   Switch,
   Tag,
   Text,
 } from '@blueprintjs/core'
 import PageHeader from '@/components/PageHeader'
 import { useScanTree } from '@/composables/ApiWrappers/Scans/useScanTree'
+import { useTreeScans } from '@/composables/ApiWrappers/Scans/useTreeScans'
 import { useScanSession } from '@/composables/useScanSession'
+import { openScanInViewer } from '@/services/scanLoader'
+import { formatBytes, formatDate } from '@/utils/format'
 import ScanTimeline from './Components/ScanTimeline'
 import '@/packages/viewer/src/style.css'
 
 let viewerMainLoaded = false
 
 export default function ViewerView({ active }: { active: boolean }) {
-  const { viewerTreeId, closeViewerTree } = useScanSession()
+  const { viewerTreeId, selectedScanId, closeViewerTree } = useScanSession()
   const treeQuery = useScanTree(viewerTreeId)
+  const scansQuery = useTreeScans(viewerTreeId)
+  const scans = useMemo(() => scansQuery.data ?? [], [scansQuery.data])
+
+  const [isComparing, setIsComparing] = useState(false)
+  const [isCompareDialogOpen, setIsCompareDialogOpen] = useState(false)
+  const [compareScanId, setCompareScanId] = useState<string | null>(null)
+  const [compareOpacity, setCompareOpacity] = useState(0.6)
+  const [isCompareLoading, setIsCompareLoading] = useState(false)
+  const [compareLoadProgress, setCompareLoadProgress] = useState<number | null>(null)
+  const [compareError, setCompareError] = useState<string | null>(null)
+  const [isSwapped, setIsSwapped] = useState(false)
+
+  const baseScan = useMemo(() => {
+    return scans.find((s) => s.id === selectedScanId) ?? (scans.length > 0 ? scans[scans.length - 1] : null)
+  }, [scans, selectedScanId])
+
+  const availableCompareScans = useMemo(() => {
+    return scans.filter((s) => s.id !== baseScan?.id)
+  }, [scans, baseScan])
+
+  const handleExitCompare = useCallback(() => {
+    const viewer = (window as unknown as { __viewer?: any }).__viewer
+    if (viewer) {
+      while (viewer.entities.length > 1) {
+        viewer.removeEntity(viewer.entities[1].id)
+      }
+      if (viewer.entities[0]) {
+        viewer.entities[0].tint = { on: false, color: '#ffffff', weight: 0.0 }
+        viewer.entities[0].opacity = 1.0
+      }
+      viewer.dirty = true
+      viewer.touch?.()
+    }
+    setIsComparing(false)
+    setIsSwapped(false)
+  }, [])
+
+  useEffect(() => {
+    if (isComparing) {
+      handleExitCompare()
+    }
+  }, [selectedScanId, viewerTreeId, handleExitCompare])
+
+  const handleCompareButtonClick = () => {
+    if (isComparing) {
+      handleExitCompare()
+    } else {
+      setCompareError(null)
+      if (availableCompareScans.length > 0 && (!compareScanId || !availableCompareScans.some((s) => s.id === compareScanId))) {
+        setCompareScanId(availableCompareScans[0].id)
+      }
+      setIsCompareDialogOpen(true)
+    }
+  }
+
+  const startComparison = async () => {
+    if (!compareScanId) return
+    const targetScan = scans.find((s) => s.id === compareScanId)
+    if (!targetScan) return
+
+    setIsCompareLoading(true)
+    setCompareLoadProgress(0)
+    setCompareError(null)
+
+    try {
+      const viewer = (window as unknown as { __viewer?: any }).__viewer
+      if (viewer) {
+        while (viewer.entities.length > 1) {
+          viewer.removeEntity(viewer.entities[1].id)
+        }
+        if (viewer.entities[0]) {
+          viewer.entities[0].tint = { on: false, color: '#ffffff', weight: 0.0 }
+          viewer.entities[0].opacity = 1.0
+        }
+      }
+
+      await openScanInViewer(targetScan, {
+        add: true,
+        compare: true,
+        compareOpacity,
+        onProgress: (p) => setCompareLoadProgress(p),
+      })
+
+      if (viewer && viewer.entities.length >= 2) {
+        viewer.entities[0].tint = { on: false, color: '#ffffff', weight: 0.0 }
+        viewer.entities[0].opacity = 1.0
+        viewer.entities[1].tint = { on: true, color: '#ffb6c1', weight: 1.0 }
+        viewer.entities[1].opacity = compareOpacity
+        viewer.dirty = true
+        viewer.touch?.()
+      }
+
+      setIsComparing(true)
+      setIsSwapped(false)
+      setIsCompareDialogOpen(false)
+    } catch (err: unknown) {
+      setCompareError((err as Error)?.message || 'Failed to load comparison scan')
+    } finally {
+      setIsCompareLoading(false)
+      setCompareLoadProgress(null)
+    }
+  }
+
+  const handleOpacityChange = (val: number) => {
+    setCompareOpacity(val)
+    const viewer = (window as unknown as { __viewer?: any }).__viewer
+    if (viewer && viewer.entities.length >= 2) {
+      const compIndex = isSwapped ? 0 : 1
+      viewer.entities[compIndex].opacity = val
+      viewer.dirty = true
+      viewer.touch?.()
+    }
+  }
+
+  const handleSwapScans = () => {
+    const viewer = (window as unknown as { __viewer?: any }).__viewer
+    if (!viewer || viewer.entities.length < 2) return
+    const nextSwapped = !isSwapped
+    setIsSwapped(nextSwapped)
+
+    if (nextSwapped) {
+      viewer.entities[0].tint = { on: true, color: '#ffb6c1', weight: 1.0 }
+      viewer.entities[0].opacity = compareOpacity
+      viewer.entities[1].tint = { on: false, color: '#ffffff', weight: 0.0 }
+      viewer.entities[1].opacity = 1.0
+    } else {
+      viewer.entities[0].tint = { on: false, color: '#ffffff', weight: 0.0 }
+      viewer.entities[0].opacity = 1.0
+      viewer.entities[1].tint = { on: true, color: '#ffb6c1', weight: 1.0 }
+      viewer.entities[1].opacity = compareOpacity
+    }
+    viewer.dirty = true
+    viewer.touch?.()
+  }
 
   useEffect(() => {
     if (!viewerMainLoaded) {
@@ -135,16 +280,89 @@ export default function ViewerView({ active }: { active: boolean }) {
             </Button>
 
             <Button
+              id="tb-compare"
+              size="small"
+              icon="comparison"
+              intent={isComparing ? Intent.PRIMARY : Intent.NONE}
+              title={isComparing ? 'Exit scan comparison' : 'Compare two scans in this scan tree'}
+              onClick={handleCompareButtonClick}
+            >
+              {isComparing ? 'Exit compare' : 'Compare'}
+            </Button>
+
+            <Button
               id="tb-close"
               size="small"
               intent={Intent.DANGER}
               icon="cross"
               title="Close scan"
+              onClick={handleExitCompare}
             >
               Close scan
             </Button>
           </NavbarGroup>
         </Navbar>
+
+        {isComparing && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 flex flex-wrap items-center gap-3 bg-[#1e1e1e]/95 backdrop-blur-md px-4 py-2 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_6px_#34d399]" />
+              <span className="font-semibold text-gray-300">Base:</span>
+              <span
+                className="max-w-[150px] truncate"
+                title={isSwapped ? (scans.find(s => s.id === compareScanId)?.fileName ?? 'Overlay') : (baseScan?.fileName ?? 'Base')}
+              >
+                {isSwapped ? (scans.find(s => s.id === compareScanId)?.fileName ?? 'Overlay') : (baseScan?.fileName ?? 'Base')}
+              </span>
+              <Tag minimal intent={Intent.SUCCESS}>Normal</Tag>
+            </div>
+
+            <span className="text-gray-500 font-bold">vs</span>
+
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ffb6c1] inline-block shadow-[0_0_8px_#ffb6c1]" />
+              <span className="font-semibold text-pink-300">Compare:</span>
+              <span
+                className="max-w-[150px] truncate"
+                title={isSwapped ? (baseScan?.fileName ?? 'Base') : (scans.find(s => s.id === compareScanId)?.fileName ?? 'Overlay')}
+              >
+                {isSwapped ? (baseScan?.fileName ?? 'Base') : (scans.find(s => s.id === compareScanId)?.fileName ?? 'Overlay')}
+              </span>
+              <Tag minimal style={{ color: '#ffb6c1', borderColor: '#ffb6c1' }}>Light Pink</Tag>
+            </div>
+
+            <div className="flex items-center gap-2 pl-3 border-l border-gray-700">
+              <span className="text-gray-400 font-medium">Opacity:</span>
+              <Slider
+                min={0.1}
+                max={1.0}
+                stepSize={0.05}
+                labelStepSize={0.5}
+                value={compareOpacity}
+                onChange={handleOpacityChange}
+                className="w-28! mb-0!"
+                labelRenderer={(val) => `${Math.round(val * 100)}%`}
+              />
+            </div>
+
+            <ButtonGroup minimal className="ml-1">
+              <Button
+                small
+                icon="swap-horizontal"
+                title="Swap base and compare scans"
+                onClick={handleSwapScans}
+                text="Swap"
+              />
+              <Button
+                small
+                intent={Intent.DANGER}
+                icon="cross"
+                title="Exit comparison"
+                onClick={handleExitCompare}
+              />
+            </ButtonGroup>
+          </div>
+        )}
 
         <div id="drop" className="bg-[#111111]!">
           <div className="flex flex-col items-center justify-center">
@@ -2161,6 +2379,114 @@ export default function ViewerView({ active }: { active: boolean }) {
 
         <div id="err" className="hidden" />
       </div>
+
+      <Dialog
+        isOpen={isCompareDialogOpen}
+        onClose={() => !isCompareLoading && setIsCompareDialogOpen(false)}
+        title="Compare Scans in Tree"
+        icon="comparison"
+        className={Classes.DARK}
+        canOutsideClickClose={!isCompareLoading}
+      >
+        <DialogBody>
+          {scans.length < 2 ? (
+            <Callout intent={Intent.WARNING} icon="warning-sign" className="text-xs">
+              At least two scans are required in this scan tree to compare. Upload or add another scan to compare.
+            </Callout>
+          ) : (
+            <div className="space-y-4 text-xs">
+              <Callout intent={Intent.PRIMARY} icon="info-sign" className="text-xs">
+                Compare two scans side-by-side by overlaying one over the other in 3D.
+                The <strong>base scan</strong> is rendered with normal colors, and the <strong>comparison scan</strong> is overlaid in light pink with translucency.
+              </Callout>
+
+              <div className="rounded-md border border-[#333333] bg-[#181818] p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-300">Base Scan:</span>
+                  <Tag minimal intent={Intent.SUCCESS}>Normal Colours (100% Opaque)</Tag>
+                </div>
+                <div className="font-mono text-sm text-white truncate">
+                  {baseScan?.fileName ?? 'Current scan'}
+                </div>
+                {baseScan?.uploadedAt && (
+                  <div className="text-gray-400 text-[11px]">
+                    {formatDate(baseScan.uploadedAt)} · {formatBytes(baseScan.fileSize)}
+                  </div>
+                )}
+              </div>
+
+              <FormGroup
+                label="Overlay Scan to Compare:"
+                helperText="Select another scan from this tree to overlay in light pink."
+                className="mb-3"
+              >
+                <HTMLSelect
+                  fill
+                  value={compareScanId ?? ''}
+                  onChange={(e) => setCompareScanId(e.target.value)}
+                  options={availableCompareScans.map((s) => ({
+                    value: s.id,
+                    label: `${s.fileName} (${formatDate(s.uploadedAt)} - ${formatBytes(s.fileSize)})`,
+                  }))}
+                />
+              </FormGroup>
+
+              <FormGroup
+                label={`Overlay Opacity: ${Math.round(compareOpacity * 100)}%`}
+                helperText="Adjust transparency for the light pink comparison cloud."
+                className="mb-1"
+              >
+                <Slider
+                  min={0.1}
+                  max={1.0}
+                  stepSize={0.05}
+                  labelStepSize={0.2}
+                  value={compareOpacity}
+                  onChange={setCompareOpacity}
+                  labelRenderer={(val) => `${Math.round(val * 100)}%`}
+                />
+              </FormGroup>
+
+              {compareError && (
+                <Callout intent={Intent.DANGER} icon="error" className="text-xs">
+                  {compareError}
+                </Callout>
+              )}
+
+              {isCompareLoading && compareLoadProgress !== null && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-gray-400 text-[11px]">
+                    <span>Loading comparison cloud...</span>
+                    <span>{Math.round(compareLoadProgress * 100)}%</span>
+                  </div>
+                  <ProgressBar intent={Intent.PRIMARY} value={compareLoadProgress} />
+                </div>
+              )}
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter
+          actions={
+            <>
+              <Button
+                text="Cancel"
+                onClick={() => setIsCompareDialogOpen(false)}
+                disabled={isCompareLoading}
+              />
+              {scans.length >= 2 && (
+                <Button
+                  intent={Intent.PRIMARY}
+                  icon="comparison"
+                  text="Start comparison"
+                  loading={isCompareLoading}
+                  disabled={!compareScanId || isCompareLoading}
+                  onClick={() => void startComparison()}
+                />
+              )}
+            </>
+          }
+        />
+      </Dialog>
 
       <ScanTimeline />
     </div>

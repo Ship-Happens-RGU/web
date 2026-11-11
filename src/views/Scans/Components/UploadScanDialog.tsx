@@ -217,7 +217,7 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
                   <Icon icon="merge-columns" size={13} className="text-[#30aedb]" />
                   <span>{files.length} scans will be merged into 1 E57 file</span>
                 </div>
-                <Tag minimal intent={Intent.PRIMARY} size="small">
+                <Tag minimal intent={Intent.PRIMARY}>
                   {formatBytes(totalBytes)}
                 </Tag>
               </div>
