@@ -359,10 +359,10 @@ export default function ViewerView({ active }: { active: boolean }) {
                 min="0.5"
                 max="8"
                 step="0.1"
-                defaultValue="2.0"
+                defaultValue="2.5"
               />
               <b className="mono" id="v-size">
-                2.0
+                2.5
               </b>
             </label>
 
@@ -534,7 +534,7 @@ export default function ViewerView({ active }: { active: boolean }) {
 
             <label className="row">
               <span>Points per frame</span>
-              <HTMLSelect id="k-budget" defaultValue="8000000">
+              <HTMLSelect id="k-budget" defaultValue="16000000">
                 <option value="1000000">1 M</option>
                 <option value="2000000">2 M</option>
                 <option value="4000000">4 M</option>
@@ -552,10 +552,10 @@ export default function ViewerView({ active }: { active: boolean }) {
                 min="0.3"
                 max="4"
                 step="0.05"
-                defaultValue="2"
+                defaultValue="2.5"
               />
               <b className="mono" id="v-density">
-                2.00
+                2.50
               </b>
             </label>
 
@@ -567,10 +567,10 @@ export default function ViewerView({ active }: { active: boolean }) {
                 min="2"
                 max="24"
                 step="0.5"
-                defaultValue="7"
+                defaultValue="12"
               />
               <b className="mono" id="v-maxpx">
-                7.0
+                12.0
               </b>
             </label>
 

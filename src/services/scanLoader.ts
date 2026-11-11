@@ -49,7 +49,7 @@ export async function getViewerApp(timeoutMs = 15000): Promise<ViewerApp> {
       throw new Error('The viewer did not finish loading')
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 16))
   }
 }
 
@@ -126,7 +126,7 @@ export async function openScanInViewer(
 
   if (isStreamableCloud) {
     const remoteUrl = `/api/v1/scans/${scan.id}/file`
-    const headEnd = Math.min(65535, Math.max(0, scan.fileSize - 1))
+    const headEnd = Math.min(262143, Math.max(0, scan.fileSize - 1))
     const [app, headResp] = await Promise.all([
       getViewerApp(),
       fetch(remoteUrl, {
