@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as THREE from 'three'
 import {
   Alignment,
   Button,
@@ -48,6 +49,10 @@ export default function ViewerView({ active }: { active: boolean }) {
   const [compareLoadProgress, setCompareLoadProgress] = useState<number | null>(null)
   const [compareError, setCompareError] = useState<string | null>(null)
   const [isSwapped, setIsSwapped] = useState(false)
+  const [alignmentStatus, setAlignmentStatus] = useState<string>('Overlaid')
+  const [isIcpRunning, setIsIcpRunning] = useState(false)
+  const [isBlinking, setIsBlinking] = useState(false)
+  const blinkTimerRef = useRef<number | null>(null)
 
   const baseScan = useMemo(() => {
     return scans.find((s) => s.id === selectedScanId) ?? (scans.length > 0 ? scans[scans.length - 1] : null)
@@ -57,7 +62,97 @@ export default function ViewerView({ active }: { active: boolean }) {
     return scans.filter((s) => s.id !== baseScan?.id)
   }, [scans, baseScan])
 
+  const alignClouds = useCallback((force = false) => {
+    const viewer = (window as unknown as { __viewer?: any }).__viewer
+    if (!viewer || viewer.entities.length < 2) return null
+    const base = viewer.entities[0]
+    const comp = viewer.entities[1]
+
+    const baseBox = viewer.measuredBox(base)
+    const compBox = viewer.measuredBox(comp)
+    if (!baseBox || !compBox || baseBox.isEmpty() || compBox.isEmpty()) return null
+
+    const baseCenter = baseBox.getCenter(new THREE.Vector3())
+    const compCenter = compBox.getCenter(new THREE.Vector3())
+    const d = baseCenter.clone().sub(compCenter)
+
+    // Translate the comparison scan so its 3D bounding center overlays the base scan directly
+    if (d.length() > 0.05 || force) {
+      comp.cells.setModel(new THREE.Matrix4().makeTranslation(d.x, d.y, d.z).multiply(comp.cells.model))
+      if (comp.robust) comp.robust.translate(d)
+      viewer.applyZRange()
+      viewer.dirty = true
+      viewer.touch?.()
+      viewer.fit?.()
+      setAlignmentStatus(`Overlaid (centered · offset ${d.length().toFixed(2)}m)`)
+    } else {
+      setAlignmentStatus('Overlaid (matching coordinates)')
+      viewer.fit?.()
+    }
+    return d
+  }, [])
+
+  const handleRunIcp = async () => {
+    const viewer = (window as unknown as { __viewer?: any }).__viewer
+    const app = (window as unknown as { __app?: any }).__app
+    if (!viewer || viewer.entities.length < 2 || !app?.runIcp) return
+    setIsIcpRunning(true)
+    try {
+      viewer.activeId = viewer.entities[1].id
+      const regSelect = document.getElementById('k-regref') as HTMLSelectElement | null
+      if (regSelect) regSelect.value = viewer.entities[0].id
+      const res = await app.runIcp()
+      if (res && typeof res.rms === 'number') {
+        setAlignmentStatus(`Fine-aligned ICP: RMS ${(res.rms * 1000).toFixed(1)}mm (${Math.round((res.overlap ?? 1) * 100)}% overlap)`)
+      }
+      viewer.dirty = true
+      viewer.touch?.()
+    } catch (e: any) {
+      setAlignmentStatus(`ICP: ${e?.message ?? 'Could not align'}`)
+    } finally {
+      setIsIcpRunning(false)
+    }
+  }
+
+  const handleToggleBlink = () => {
+    setIsBlinking((prev) => {
+      const next = !prev
+      if (blinkTimerRef.current) {
+        window.clearInterval(blinkTimerRef.current)
+        blinkTimerRef.current = null
+      }
+      if (next) {
+        let showPink = false
+        blinkTimerRef.current = window.setInterval(() => {
+          showPink = !showPink
+          const viewer = (window as unknown as { __viewer?: any }).__viewer
+          if (viewer && viewer.entities.length >= 2) {
+            const compIndex = isSwapped ? 0 : 1
+            viewer.entities[compIndex].visible = showPink
+            viewer.dirty = true
+            viewer.touch?.()
+          }
+        }, 600)
+      } else {
+        const viewer = (window as unknown as { __viewer?: any }).__viewer
+        if (viewer && viewer.entities.length >= 2) {
+          const compIndex = isSwapped ? 0 : 1
+          viewer.entities[compIndex].visible = true
+          viewer.entities[compIndex].opacity = compareOpacity
+          viewer.dirty = true
+          viewer.touch?.()
+        }
+      }
+      return next
+    })
+  }
+
   const handleExitCompare = useCallback(() => {
+    if (blinkTimerRef.current) {
+      window.clearInterval(blinkTimerRef.current)
+      blinkTimerRef.current = null
+    }
+    setIsBlinking(false)
     const viewer = (window as unknown as { __viewer?: any }).__viewer
     if (viewer) {
       while (viewer.entities.length > 1) {
@@ -66,9 +161,12 @@ export default function ViewerView({ active }: { active: boolean }) {
       if (viewer.entities[0]) {
         viewer.entities[0].tint = { on: false, color: '#ffffff', weight: 0.0 }
         viewer.entities[0].opacity = 1.0
+        viewer.entities[0].depthBias = 0.0
+        viewer.entities[0].visible = true
       }
       viewer.dirty = true
       viewer.touch?.()
+      viewer.fit?.()
     }
     setIsComparing(false)
     setIsSwapped(false)
@@ -123,10 +221,14 @@ export default function ViewerView({ active }: { active: boolean }) {
       if (viewer && viewer.entities.length >= 2) {
         viewer.entities[0].tint = { on: false, color: '#ffffff', weight: 0.0 }
         viewer.entities[0].opacity = 1.0
+        viewer.entities[0].depthBias = 0.0
         viewer.entities[1].tint = { on: true, color: '#ffb6c1', weight: 1.0 }
         viewer.entities[1].opacity = compareOpacity
+        viewer.entities[1].depthBias = 0.003
+        alignClouds(false)
         viewer.dirty = true
         viewer.touch?.()
+        viewer.fit?.()
       }
 
       setIsComparing(true)
@@ -160,13 +262,17 @@ export default function ViewerView({ active }: { active: boolean }) {
     if (nextSwapped) {
       viewer.entities[0].tint = { on: true, color: '#ffb6c1', weight: 1.0 }
       viewer.entities[0].opacity = compareOpacity
+      viewer.entities[0].depthBias = 0.003
       viewer.entities[1].tint = { on: false, color: '#ffffff', weight: 0.0 }
       viewer.entities[1].opacity = 1.0
+      viewer.entities[1].depthBias = 0.0
     } else {
       viewer.entities[0].tint = { on: false, color: '#ffffff', weight: 0.0 }
       viewer.entities[0].opacity = 1.0
+      viewer.entities[0].depthBias = 0.0
       viewer.entities[1].tint = { on: true, color: '#ffb6c1', weight: 1.0 }
       viewer.entities[1].opacity = compareOpacity
+      viewer.entities[1].depthBias = 0.003
     }
     viewer.dirty = true
     viewer.touch?.()
@@ -345,7 +451,36 @@ export default function ViewerView({ active }: { active: boolean }) {
               />
             </div>
 
-            <ButtonGroup minimal className="ml-1">
+            <ButtonGroup minimal className="ml-1 items-center gap-1">
+              <Button
+                small
+                icon="locate"
+                title="Overlay scans directly by matching their centers"
+                onClick={() => alignClouds(true)}
+                text="Align"
+              />
+              <Button
+                small
+                icon="predictive-analysis"
+                loading={isIcpRunning}
+                title="Run ICP registration to lock scans together with millimeter precision"
+                onClick={() => void handleRunIcp()}
+                text="Fine ICP"
+              />
+              <Button
+                small
+                icon="flash"
+                intent={isBlinking ? Intent.WARNING : Intent.NONE}
+                title="Flicker the comparison scan on/off to immediately spot visual differences"
+                onClick={handleToggleBlink}
+                text={isBlinking ? 'Blinking' : 'Blink'}
+              />
+              <Button
+                small
+                icon="zoom-to-fit"
+                title="Fit camera to frame both overlaid scans"
+                onClick={() => (window as unknown as { __viewer?: any }).__viewer?.fit?.()}
+              />
               <Button
                 small
                 icon="swap-horizontal"
@@ -361,6 +496,10 @@ export default function ViewerView({ active }: { active: boolean }) {
                 onClick={handleExitCompare}
               />
             </ButtonGroup>
+
+            <span className="text-[10px] text-gray-400 bg-black/40 px-2 py-0.5 rounded border border-gray-800">
+              {alignmentStatus}
+            </span>
           </div>
         )}
 
