@@ -410,7 +410,17 @@ export default function ViewerView({ active }: { active: boolean }) {
         }
       />
 
-      <div className="viewer-root bp6-dark min-h-0 flex-1">
+      {!viewerTreeId && (
+        <div className="flex-1 flex items-center justify-center bg-[#111111] text-sm text-gray-400">
+          Nothing selected from scan tree
+        </div>
+      )}
+
+      <div
+        className={`viewer-root bp6-dark min-h-0 flex-1 ${
+          !viewerTreeId ? 'hidden' : ''
+        }`}
+      >
         <canvas id="gl" />
 
         <Navbar id="topbar" className="hidden">
@@ -1437,7 +1447,7 @@ export default function ViewerView({ active }: { active: boolean }) {
             </details>
           </div>
 
-          <div className="grp" data-grp="register">
+          <div className="grp hidden" data-grp="register">
             <H3>Register</H3>
 
             <label className="row">
@@ -1675,7 +1685,7 @@ export default function ViewerView({ active }: { active: boolean }) {
             </div>
           </div>
 
-          <div className="grp">
+          <div className="grp hidden">
             <H3>Clipping</H3>
 
             <label className="row">
