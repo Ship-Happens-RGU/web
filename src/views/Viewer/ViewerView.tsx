@@ -33,7 +33,6 @@ import { formatBytes, formatDate } from '@/utils/format'
 import ScanTimeline from './Components/ScanTimeline'
 import GaussianSplatOverlay from './Components/GaussianSplatOverlay'
 import UnwrappedScanOverlay from './Components/UnwrappedScanOverlay'
-import E57XmlTreeOverlay from './Components/E57XmlTreeOverlay'
 import '@/packages/viewer/src/style.css'
 
 type ViewMode =
@@ -44,7 +43,6 @@ type ViewMode =
   | 'splat'
   | 'sections'
   | 'unwrapped'
-  | 'xml'
 
 let viewerMainLoaded = false
 
@@ -324,11 +322,6 @@ export default function ViewerView({ active }: { active: boolean }) {
         viewer?.exitBubble?.()
         app?.setDisplay?.('points')
         viewer?.fit?.()
-        return
-      }
-
-      if (mode === 'xml') {
-        viewer?.exitBubble?.()
         return
       }
 
@@ -725,17 +718,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </Button>
             <Button
               small
-              minimal={activeViewModeTab !== 'xml'}
-              intent={activeViewModeTab === 'xml' ? Intent.PRIMARY : Intent.NONE}
-              icon="code"
-              disabled={!isPointCloudReady}
-              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
-              onClick={() => handleSelectViewMode('xml')}
-            >
-              XML / Metadata
-            </Button>
-            <Button
-              small
               minimal
               icon="cross"
               title="Hide Toolbar & Modes"
@@ -761,8 +743,6 @@ export default function ViewerView({ active }: { active: boolean }) {
               <UnwrappedScanOverlay inspectorEl={inspectorSlotEl} />
             )}
 
-            {activeViewModeTab === 'xml' && <E57XmlTreeOverlay />}
-
             {inspectorSlotEl &&
               createPortal(
                 <div
@@ -770,8 +750,7 @@ export default function ViewerView({ active }: { active: boolean }) {
                     activeViewModeTab &&
                     activeViewModeTab !== 'points' &&
                     activeViewModeTab !== 'splat' &&
-                    activeViewModeTab !== 'unwrapped' &&
-                    activeViewModeTab !== 'xml'
+                    activeViewModeTab !== 'unwrapped'
                       ? ''
                       : 'hidden'
                   }`}
