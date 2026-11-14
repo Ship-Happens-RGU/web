@@ -1709,7 +1709,7 @@ export default function ViewerView({ active }: { active: boolean }) {
             </label>
           </div>
 
-          <div className="grp">
+          <div className="grp hidden">
             <H3>Performance</H3>
 
             <label className="row">
@@ -1836,7 +1836,7 @@ export default function ViewerView({ active }: { active: boolean }) {
             </p>
           </div>
 
-          <div className="grp" data-grp="crop">
+          <div className="grp hidden" data-grp="crop">
             <H3>Crop</H3>
 
             <label className="row">
