@@ -2474,7 +2474,6 @@ export default function ViewerView({ active }: { active: boolean }) {
               <div className="rounded-md border border-[#333333] bg-[#181818] p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-gray-300">Base Scan:</span>
-                  <Tag minimal intent={Intent.SUCCESS}>Normal Colours (100% Opaque)</Tag>
                 </div>
                 <div className="font-mono text-sm text-white truncate">
                   {baseScan?.fileName ?? 'Current scan'}

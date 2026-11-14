@@ -264,13 +264,13 @@ export default function ScanTimeline() {
 
       {/* Loading progress bar strip */}
       {loadingScanId && loadProgress !== null && (
-        <div className="h-0.5 w-full bg-white/5">
+        <div className="h-1 w-full overflow-hidden bg-white/5">
           <ProgressBar
             intent={Intent.PRIMARY}
             value={loadProgress}
             animate
             stripes
-            className="h-0.5! rounded-none!"
+            className="h-1! rounded-none!"
           />
         </div>
       )}
