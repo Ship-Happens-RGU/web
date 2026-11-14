@@ -67,9 +67,7 @@ export default function ViewerView({ active }: { active: boolean }) {
   const [isIcpRunning, setIsIcpRunning] = useState(false)
   const [isBlinking, setIsBlinking] = useState(false)
   const blinkTimerRef = useRef<number | null>(null)
-  const [activeViewModeTab, setActiveViewModeTab] = useState<ViewMode | null>(
-    null,
-  )
+  const [activeViewModeTab, setActiveViewModeTab] = useState<ViewMode>('points')
   const [isTabPanelOpen, setIsTabPanelOpen] = useState(false)
 
   const baseScan = useMemo(() => {
@@ -191,7 +189,7 @@ export default function ViewerView({ active }: { active: boolean }) {
   }, [])
 
   useEffect(() => {
-    setActiveViewModeTab(null)
+    setActiveViewModeTab('points')
     setIsTabPanelOpen(false)
     if (isComparing) {
       handleExitCompare()
@@ -495,85 +493,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </Button>
           </NavbarGroup>
         </Navbar>
-
-        {activeViewModeTab === null && (
-          <div className="absolute inset-0 top-12 z-[8] flex flex-col items-center justify-center bg-[#111111] text-center px-6">
-            <div className="max-w-xl rounded-xl border border-[#2a2a2a] bg-[#181818]/90 px-6 py-6 shadow-2xl">
-              <p className="text-sm font-medium text-gray-200 mb-1">
-                Select a view mode to inspect this scan
-              </p>
-              <p className="text-xs text-gray-400 mb-4">
-                Choose a representation from the top bar or start below.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button
-                  small
-                  intent={Intent.PRIMARY}
-                  icon="scatter-plot"
-                  onClick={() => handleSelectViewMode('points')}
-                >
-                  3D Point Cloud
-                </Button>
-                <Button
-                  small
-                  icon="cube"
-                  onClick={() => handleSelectViewMode('mesh')}
-                >
-                  3D Triangle Mesh
-                </Button>
-                <Button
-                  small
-                  icon="camera"
-                  onClick={() => handleSelectViewMode('stations')}
-                >
-                  360° Panorama
-                </Button>
-                <Button
-                  small
-                  icon="map"
-                  onClick={() => handleSelectViewMode('raster')}
-                >
-                  2D Height & Contours
-                </Button>
-                <Button
-                  small
-                  icon="shapes"
-                  onClick={() => handleSelectViewMode('fit')}
-                >
-                  Fitted Primitives
-                </Button>
-                <Button
-                  small
-                  icon="cloud"
-                  onClick={() => handleSelectViewMode('splat')}
-                >
-                  3D Gaussian Splatting
-                </Button>
-                <Button
-                  small
-                  icon="layers"
-                  onClick={() => handleSelectViewMode('sections')}
-                >
-                  2D Slices & Floor Plans
-                </Button>
-                <Button
-                  small
-                  icon="media"
-                  onClick={() => handleSelectViewMode('unwrapped')}
-                >
-                  Depth / Intensity 2D
-                </Button>
-                <Button
-                  small
-                  icon="code"
-                  onClick={() => handleSelectViewMode('xml')}
-                >
-                  XML / Metadata Tree
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {activeViewModeTab === 'splat' && (
           <GaussianSplatOverlay
