@@ -81,6 +81,7 @@ export default function ViewerView({ active }: { active: boolean }) {
   const [isPointCloudReady, setIsPointCloudReady] = useState(false)
   const [isViewsMenuOpen, setIsViewsMenuOpen] = useState(false)
   const viewsMenuRef = useRef<HTMLDivElement | null>(null)
+  const viewportRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!isViewsMenuOpen) return
@@ -148,9 +149,9 @@ export default function ViewerView({ active }: { active: boolean }) {
     (e: React.MouseEvent) => {
       e.preventDefault()
       const startY = e.clientY
-      const startH = timelineHeight ?? 170
+      const startH = timelineHeight ?? 98
       const onMove = (ev: MouseEvent) => {
-        const next = Math.max(96, Math.min(480, startH + (startY - ev.clientY)))
+        const next = Math.max(88, Math.min(480, startH + (startY - ev.clientY)))
         setTimelineHeight(next)
       }
       const onUp = () => {
@@ -476,6 +477,16 @@ export default function ViewerView({ active }: { active: boolean }) {
         const v = (window as unknown as { __viewer?: { resize: () => void } }).__viewer
         v?.resize()
       })
+    } else {
+      const v = (window as unknown as { __viewer?: { canvas?: HTMLCanvasElement; resize: () => void } }).__viewer
+      const host = viewportRef.current
+      if (v?.canvas && host) {
+        const placeholder = host.querySelector('#gl')
+        if (placeholder && placeholder !== v.canvas) {
+          placeholder.replaceWith(v.canvas)
+          v.resize()
+        }
+      }
     }
   }, [])
 
@@ -735,6 +746,7 @@ export default function ViewerView({ active }: { active: boolean }) {
 
         <div className="flex-1 flex min-h-0 overflow-hidden">
           <div
+            ref={viewportRef}
             className={`relative flex-1 min-w-0 min-h-0 bg-[#111111] overflow-hidden ${
               !visibleWindows.viewport ? 'hidden' : ''
             }`}

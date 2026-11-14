@@ -19,7 +19,7 @@ import { formatBytes, formatDate, formatDateTime } from '@/utils/format'
 import UploadScanDialog from '@/views/Scans/Components/UploadScanDialog'
 
 export default function ScanTimeline() {
-  const { viewerTreeId, selectedScanId, selectScan, closeViewerTree } = useScanSession()
+  const { viewerTreeId, selectedScanId, selectScan } = useScanSession()
   const treeQuery = useScanTree(viewerTreeId)
   const scansQuery = useTreeScans(viewerTreeId)
 
@@ -148,8 +148,8 @@ export default function ScanTimeline() {
   }
 
   // Calculate timeline geometry
-  const clipWidth = 220 * zoomLevel
-  const clipGap = 32 * zoomLevel
+  const clipWidth = 150 * zoomLevel
+  const clipGap = 16 * zoomLevel
 
   if (!viewerTreeId) {
     return null
@@ -158,29 +158,17 @@ export default function ScanTimeline() {
   return (
     <div
       ref={containerRef}
-      className={`${Classes.DARK} relative z-20 flex flex-col border-t border-white/10 bg-[#161616] select-none shadow-2xl transition-all`}
-      style={{ height: '172px' }}
+      className={`${Classes.DARK} relative z-20 flex h-full min-h-[92px] flex-col border-t border-white/10 bg-[#161616] select-none transition-all`}
     >
-      {/* Top Toolbar: Transport Controls, Timeline Scrubbing Status & Timecode */}
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/10 bg-[#1e1e1e] px-4 text-xs">
-        {/* Left: Tree badge and playback controls */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 font-medium text-white/90">
-            <Icon icon="folder-open" size={14} className="text-[#30aedb]" />
-            <span className="max-w-[180px] truncate">{treeQuery.data?.name ?? 'Scan Tree'}</span>
-            <Tag minimal intent={Intent.PRIMARY}>
-              {scans.length} {scans.length === 1 ? 'scan' : 'scans'}
-            </Tag>
-          </div>
-
-          <div className="h-4 w-px bg-white/15" />
-
-          {/* VCR / Video transport buttons */}
+      {/* Top Toolbar: Transport Controls, Timecode & Actions */}
+      <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/10 bg-[#1e1e1e] px-3 text-xs">
+        {/* Left: Playback controls and scan count */}
+        <div className="flex items-center gap-2">
           <ButtonGroup minimal>
             <Tooltip content="Previous scan (History back)" placement="top">
               <Button
                 icon="step-backward"
-                small
+                size="small"
                 disabled={selectedIndex <= 0}
                 onClick={handlePrev}
               />
@@ -189,7 +177,7 @@ export default function ScanTimeline() {
             <Tooltip content={isPlaying ? 'Pause auto-tour' : 'Play history auto-tour'} placement="top">
               <Button
                 icon={isPlaying ? 'pause' : 'play'}
-                small
+                size="small"
                 intent={isPlaying ? Intent.PRIMARY : undefined}
                 disabled={scans.length <= 1}
                 onClick={() => setIsPlaying((p) => !p)}
@@ -199,55 +187,56 @@ export default function ScanTimeline() {
             <Tooltip content="Next scan (History forward)" placement="top">
               <Button
                 icon="step-forward"
-                small
+                size="small"
                 disabled={selectedIndex >= scans.length - 1}
                 onClick={handleNext}
               />
             </Tooltip>
           </ButtonGroup>
+
+          <Tag minimal intent={Intent.PRIMARY} className="text-[10px]">
+            {scans.length} {scans.length === 1 ? 'scan' : 'scans'}
+          </Tag>
         </div>
 
-        {/* Center: Selected Scan readout / Timecode display */}
-        <div className="flex items-center gap-2">
+        {/* Center: Selected Scan readout */}
+        <div className="flex items-center gap-2 min-w-0">
           {currentScan ? (
-            <div className="flex items-center gap-2 rounded bg-black/40 px-2.5 py-1 font-mono text-[11px] text-[#30aedb]">
-              <span className="text-white/40">TIMESTAMP:</span>
-              <span className="font-semibold text-white/90">{formatDateTime(currentScan.scanDate)}</span>
-              <span className="text-white/30">|</span>
-              <span className="max-w-[140px] truncate text-white/70">{currentScan.name}</span>
+            <div className="flex items-center gap-1.5 font-mono text-[11px] text-white/80 truncate">
+              <span className="font-semibold text-[#30aedb]">{formatDateTime(currentScan.scanDate)}</span>
             </div>
           ) : (
             <span className="text-white/40">No scans in this tree</span>
           )}
 
           {loadingScanId && (
-            <div className="flex items-center gap-1.5 text-xs text-[#30aedb]">
-              <Spinner size={12} intent={Intent.PRIMARY} />
+            <div className="flex items-center gap-1 text-[11px] text-[#30aedb] shrink-0">
+              <Spinner size={11} intent={Intent.PRIMARY} />
               <span>
                 {loadProgress !== null && loadProgress < 1
-                  ? `Loading ${Math.round(loadProgress * 100)}%`
-                  : 'Parsing point cloud…'}
+                  ? `${Math.round(loadProgress * 100)}%`
+                  : 'Parsing…'}
               </span>
             </div>
           )}
 
           {loadError && (
             <Tooltip content={loadError} intent={Intent.DANGER}>
-              <span className="flex items-center gap-1 text-xs text-red-400">
+              <span className="flex items-center gap-1 text-[11px] text-red-400 shrink-0">
                 <Icon icon="error" size={12} />
-                <span>Load error</span>
+                <span>Error</span>
               </span>
             </Tooltip>
           )}
         </div>
 
-        {/* Right: Zoom controls and action buttons */}
-        <div className="flex items-center gap-2">
+        {/* Right: Zoom controls and Upload */}
+        <div className="flex items-center gap-1.5">
           <ButtonGroup minimal>
             <Tooltip content="Zoom out timeline" placement="top">
               <Button
                 icon="zoom-out"
-                small
+                size="small"
                 disabled={zoomLevel <= 0.8}
                 onClick={() => setZoomLevel((z) => Math.max(0.7, z - 0.25))}
               />
@@ -255,7 +244,7 @@ export default function ScanTimeline() {
             <Tooltip content="Zoom in timeline" placement="top">
               <Button
                 icon="zoom-in"
-                small
+                size="small"
                 disabled={zoomLevel >= 2.5}
                 onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
               />
@@ -264,16 +253,12 @@ export default function ScanTimeline() {
 
           <Button
             icon="cloud-upload"
-            small
+            size="small"
             intent={Intent.PRIMARY}
             onClick={() => setUploadDialogOpen(true)}
           >
-            Upload scan
+            Upload
           </Button>
-
-          <Tooltip content="Exit timeline and close tree" placement="top">
-            <Button icon="cross" small minimal onClick={closeViewerTree} />
-          </Tooltip>
         </div>
       </div>
 
@@ -290,27 +275,17 @@ export default function ScanTimeline() {
         </div>
       )}
 
-      {/* Timeline Ruler & Track area */}
+      {/* Timeline Track area */}
       <div className="relative min-h-0 flex-1 overflow-x-auto overflow-y-hidden bg-[#141414] [scrollbar-width:thin]">
-        {/* Ruler ticks background bar */}
         <div
           ref={trackRef}
-          className="relative flex h-full items-stretch py-2 pl-8 pr-16"
+          className="relative flex h-full items-center px-4"
           style={{
-            minWidth: `${Math.max(1000, scans.length * (clipWidth + clipGap) + 120)}px`,
+            minWidth: `${Math.max(800, scans.length * (clipWidth + clipGap) + 48)}px`,
           }}
         >
-          {/* Subtle time ruler bar at the top */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-5 border-b border-white/5 bg-[#181818]/80 text-[10px] text-white/40">
-            <div className="flex h-full items-center px-4">
-              <span className="font-mono tracking-wider uppercase text-[9px] text-white/30">
-                HISTORY TIMELINE ◀ EARLIER &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LATER ▶
-              </span>
-            </div>
-          </div>
-
           {/* Scans timeline track */}
-          <div className="mt-4 flex items-center gap-6">
+          <div className="flex items-center gap-4">
             {scans.map((scan, idx) => {
               const isSelected = scan.id === selectedScanId
               const isLoading = scan.id === loadingScanId
@@ -321,64 +296,48 @@ export default function ScanTimeline() {
                   data-scan-id={scan.id}
                   onClick={() => selectScan(scan.id)}
                   style={{ width: `${clipWidth}px` }}
-                  className={`group relative flex h-20 shrink-0 cursor-pointer flex-col justify-between rounded-md border p-2.5 transition-all ${
+                  className={`group relative flex h-12 shrink-0 cursor-pointer flex-col justify-center gap-0.5 rounded border px-2.5 py-1 transition-all ${
                     isSelected
-                      ? 'border-[#30aedb] bg-[#1a2d38] shadow-[0_0_15px_rgba(48,174,219,0.35)] ring-1 ring-[#30aedb]'
+                      ? 'border-[#30aedb] bg-[#1a2d38] shadow-[0_0_10px_rgba(48,174,219,0.28)] ring-1 ring-[#30aedb]'
                       : 'border-white/10 bg-[#1c1c1c] hover:border-white/30 hover:bg-[#232323]'
                   }`}
                 >
-                  {/* Playhead needle when active */}
-                  {isSelected && (
-                    <div className="pointer-events-none absolute -top-4 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                      <div className="h-0 w-0 border-x-4 border-x-transparent border-t-[6px] border-t-[#30aedb]" />
-                      <div className="h-4 w-0.5 bg-[#30aedb]" />
-                    </div>
-                  )}
-
-                  {/* Clip Header: Date tag + Format badge */}
-                  <div className="flex items-center justify-between gap-1 text-[11px]">
+                  {/* Clip Header: Scan Name + Status/Format */}
+                  <div className="flex items-center justify-between gap-1.5">
                     <span
-                      className={`font-semibold ${
-                        isSelected ? 'text-[#30aedb]' : 'text-white/80 group-hover:text-white'
+                      className={`truncate text-[11px] font-medium ${
+                        isSelected ? 'text-white' : 'text-white/85 group-hover:text-white'
                       }`}
+                      title={scan.name}
                     >
-                      {formatDate(scan.scanDate)}
+                      {scan.name}
                     </span>
 
-                    <Tag
-                      minimal
-                      intent={isSelected ? Intent.PRIMARY : Intent.NONE}
-                      className="font-mono text-[10px]"
-                    >
-                      {scan.fileName.split('.').pop()?.toUpperCase() ?? 'SCAN'}
-                    </Tag>
-                  </div>
-
-                  {/* Clip Body: Scan Name */}
-                  <div className="my-0.5 truncate text-[12px] font-medium text-white/90" title={scan.name}>
-                    {scan.name}
-                  </div>
-
-                  {/* Clip Footer: File size & Status */}
-                  <div className="flex items-center justify-between text-[10px] text-white/50">
-                    <span>{formatBytes(scan.fileSize)}</span>
-
                     {isLoading ? (
-                      <span className="flex items-center gap-1 text-[#30aedb]">
-                        <Spinner size={10} intent={Intent.PRIMARY} />
-                        <span>Opening</span>
-                      </span>
-                    ) : isSelected ? (
-                      <span className="font-medium text-[#30aedb]">Active in 3D</span>
+                      <Spinner size={10} intent={Intent.PRIMARY} className="shrink-0" />
                     ) : (
-                      <span className="opacity-0 group-hover:opacity-100 text-white/70">Click to view</span>
+                      <span
+                        className={`shrink-0 font-mono text-[9px] uppercase ${
+                          isSelected ? 'text-[#30aedb]' : 'text-white/40'
+                        }`}
+                      >
+                        {scan.fileName.split('.').pop() ?? 'SCAN'}
+                      </span>
                     )}
+                  </div>
+
+                  {/* Clip Footer: Date & File size */}
+                  <div className="flex items-center justify-between text-[10px] text-white/50">
+                    <span className={isSelected ? 'text-[#30aedb]/90 font-medium' : ''}>
+                      {formatDate(scan.scanDate)}
+                    </span>
+                    <span>{formatBytes(scan.fileSize)}</span>
                   </div>
 
                   {/* Chronological connector line between clips */}
                   {idx < scans.length - 1 && (
                     <div
-                      className="pointer-events-none absolute top-1/2 -right-6 h-0.5 w-6 -translate-y-1/2 bg-white/10"
+                      className="pointer-events-none absolute top-1/2 -right-4 h-0.5 w-4 -translate-y-1/2 bg-white/10"
                     />
                   )}
                 </div>
@@ -387,10 +346,10 @@ export default function ScanTimeline() {
 
             {/* Empty state when tree has no scans */}
             {scans.length === 0 && !scansQuery.isPending && (
-              <div className="flex items-center gap-3 pl-4 text-xs text-white/50">
+              <div className="flex items-center gap-3 pl-2 text-xs text-white/50">
                 <span>No scans uploaded to this tree yet.</span>
                 <Button
-                  small
+                  size="small"
                   intent={Intent.PRIMARY}
                   icon="cloud-upload"
                   onClick={() => setUploadDialogOpen(true)}
