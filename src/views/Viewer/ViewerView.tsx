@@ -16,9 +16,13 @@ import {
   H3,
   HTMLSelect,
   Intent,
+  Menu,
+  MenuDivider,
+  MenuItem,
   Navbar,
   NavbarDivider,
   NavbarGroup,
+  Popover,
   ProgressBar,
   Slider,
   Switch,
@@ -70,6 +74,78 @@ export default function ViewerView({ active }: { active: boolean }) {
   const [activeViewModeTab, setActiveViewModeTab] = useState<ViewMode>('points')
   const [inspectorSlotEl, setInspectorSlotEl] = useState<HTMLDivElement | null>(
     null,
+  )
+  const [visibleWindows, setVisibleWindows] = useState({
+    toolbar: true,
+    viewport: true,
+    inspector: true,
+    timeline: true,
+  })
+  const [inspectorWidth, setInspectorWidth] = useState(320)
+  const [timelineHeight, setTimelineHeight] = useState<number | null>(null)
+
+  const toggleWindow = useCallback(
+    (key: 'toolbar' | 'viewport' | 'inspector' | 'timeline') => {
+      setVisibleWindows((prev) => ({ ...prev, [key]: !prev[key] }))
+      requestAnimationFrame(() => {
+        ;(window as unknown as { __viewer?: any }).__viewer?.resize?.()
+      })
+    },
+    [],
+  )
+
+  const resetLayout = useCallback(() => {
+    setVisibleWindows({
+      toolbar: true,
+      viewport: true,
+      inspector: true,
+      timeline: true,
+    })
+    setInspectorWidth(320)
+    setTimelineHeight(null)
+    requestAnimationFrame(() => {
+      ;(window as unknown as { __viewer?: any }).__viewer?.resize?.()
+    })
+  }, [])
+
+  const startInspectorResize = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      const startX = e.clientX
+      const startW = inspectorWidth
+      const onMove = (ev: MouseEvent) => {
+        const next = Math.max(220, Math.min(640, startW + (startX - ev.clientX)))
+        setInspectorWidth(next)
+      }
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        ;(window as unknown as { __viewer?: any }).__viewer?.resize?.()
+      }
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+    },
+    [inspectorWidth],
+  )
+
+  const startTimelineResize = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      const startY = e.clientY
+      const startH = timelineHeight ?? 170
+      const onMove = (ev: MouseEvent) => {
+        const next = Math.max(96, Math.min(480, startH + (startY - ev.clientY)))
+        setTimelineHeight(next)
+      }
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        ;(window as unknown as { __viewer?: any }).__viewer?.resize?.()
+      }
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+    },
+    [timelineHeight],
   )
 
   const baseScan = useMemo(() => {
@@ -394,13 +470,57 @@ export default function ViewerView({ active }: { active: boolean }) {
         }
         actions={
           viewerTreeId ? (
-            <Button
-              small
-              icon="cross"
-              variant="minimal"
-              onClick={closeViewerTree}
-              text="Exit scan tree"
-            />
+            <div className="flex items-center gap-1.5">
+              <Popover
+                content={
+                  <Menu>
+                    <MenuItem
+                      icon={visibleWindows.toolbar ? 'tick' : 'blank'}
+                      text="Toolbar & Modes"
+                      onClick={() => toggleWindow('toolbar')}
+                    />
+                    <MenuItem
+                      icon={visibleWindows.viewport ? 'tick' : 'blank'}
+                      text="Scene Viewport"
+                      onClick={() => toggleWindow('viewport')}
+                    />
+                    <MenuItem
+                      icon={visibleWindows.inspector ? 'tick' : 'blank'}
+                      text="Inspector"
+                      onClick={() => toggleWindow('inspector')}
+                    />
+                    <MenuItem
+                      icon={visibleWindows.timeline ? 'tick' : 'blank'}
+                      text="Timeline"
+                      onClick={() => toggleWindow('timeline')}
+                    />
+                    <MenuDivider />
+                    <MenuItem
+                      icon="reset"
+                      text="Reset Layout"
+                      onClick={resetLayout}
+                    />
+                  </Menu>
+                }
+                placement="bottom-end"
+              >
+                <Button
+                  small
+                  icon="panel-stats"
+                  rightIcon="caret-down"
+                  variant="minimal"
+                  text="Views"
+                />
+              </Popover>
+
+              <Button
+                small
+                icon="cross"
+                variant="minimal"
+                onClick={closeViewerTree}
+                text="Exit scan tree"
+              />
+            </div>
           ) : undefined
         }
       />
@@ -416,7 +536,11 @@ export default function ViewerView({ active }: { active: boolean }) {
           !viewerTreeId ? 'hidden' : ''
         }`}
       >
-        <div className="shrink-0 bg-[#1e1e1e] border-b border-[#2a2a2a]">
+        <div
+          className={`shrink-0 bg-[#1e1e1e] border-b border-[#2a2a2a] ${
+            !visibleWindows.toolbar ? 'hidden' : ''
+          }`}
+        >
           <Navbar
             id="topbar"
             className="static! w-full! bg-[#1e1e1e]! border-b! border-[#2a2a2a]! shadow-none! px-3!"
@@ -585,11 +709,22 @@ export default function ViewerView({ active }: { active: boolean }) {
             >
               XML / Metadata
             </Button>
+            <Button
+              small
+              minimal
+              icon="cross"
+              title="Hide Toolbar & Modes"
+              onClick={() => toggleWindow('toolbar')}
+            />
           </div>
         </div>
 
         <div className="flex-1 flex min-h-0 overflow-hidden">
-          <div className="relative flex-1 min-w-0 min-h-0 bg-[#111111] overflow-hidden">
+          <div
+            className={`relative flex-1 min-w-0 min-h-0 bg-[#111111] overflow-hidden ${
+              !visibleWindows.viewport ? 'hidden' : ''
+            }`}
+          >
             <canvas id="gl" />
 
             {activeViewModeTab === 'splat' && (
@@ -1119,113 +1254,6 @@ export default function ViewerView({ active }: { active: boolean }) {
                 </p>
               </details>
             </div>
-
-            <div
-              className="grp hidden"
-              data-grp="fit"
-            >
-              <ButtonGroup fill className="mb-2">
-                <Button id="k-fitplane" size="small">
-                  Plane
-                </Button>
-
-                <Button id="k-fitsphere" size="small">
-                  Sphere
-                </Button>
-              </ButtonGroup>
-
-              <ButtonGroup fill className="mb-2">
-                <Button id="k-fitcyl" size="small">
-                  Cylinder
-                </Button>
-
-                <Button id="k-fitcircle" size="small">
-                  Circle
-                </Button>
-              </ButtonGroup>
-
-              <p className="statusline" id="v-fit">
-                —
-              </p>
-
-              <Button id="k-fitclear" fill size="small" className="mb-1.5">
-                Clear the drawn shape
-              </Button>
-
-              <p className="lab mono">DETECT</p>
-
-              <label className="row">
-                <span title="How far a point may be from a shape and still count as part of it.">
-                  Tolerance
-                </span>
-                <input
-                  type="range"
-                  id="k-dettol"
-                  min="0.002"
-                  max="0.2"
-                  step="0.002"
-                  defaultValue="0.02"
-                />
-                <b className="mono" id="v-dettol">
-                  0.02 m
-                </b>
-              </label>
-
-              <label className="row">
-                <span>Min points</span>
-                <input
-                  type="range"
-                  id="k-detmin"
-                  min="100"
-                  max="20000"
-                  step="100"
-                  defaultValue="2000"
-                />
-                <b className="mono" id="v-detmin">
-                  2,000
-                </b>
-              </label>
-
-              <label className="row">
-                <span>Look for</span>
-                <HTMLSelect id="k-detkinds" defaultValue="plane,sphere,cylinder">
-                  <option value="plane">Planes</option>
-                  <option value="plane,cylinder">Planes and cylinders</option>
-                  <option value="plane,sphere,cylinder">
-                    Planes, spheres, cylinders
-                  </option>
-                </HTMLSelect>
-              </label>
-
-              <Button
-                id="k-detect"
-                intent={Intent.PRIMARY}
-                fill
-                size="small"
-                className="mb-1.5"
-              >
-                Detect shapes…
-              </Button>
-
-              <ul id="det-list" className="mlist" />
-
-              <ButtonGroup fill className="mb-2 det-have">
-                <Button id="k-detkeep" size="small">
-                  Keep only inliers
-                </Button>
-
-                <Button id="k-detremove" size="small">
-                  Remove inliers
-                </Button>
-              </ButtonGroup>
-
-              <details className="sub">
-                <summary>How this works</summary>
-                <p className="hint">
-                  Fits a primitive to the <b>active region&apos;s contents</b>, or to the whole layer when no region is active. The RMS is the number that says whether to believe it.
-                </p>
-              </details>
-            </div>
           </div>,
                 inspectorSlotEl,
               )}
@@ -1388,12 +1416,34 @@ export default function ViewerView({ active }: { active: boolean }) {
         </div>
           </div>
 
-          <aside className="w-80 shrink-0 border-l border-[#2a2a2a] bg-[#1e1e1e] flex flex-col min-h-0">
-            <div className="px-3 py-2 border-b border-[#2a2a2a] bg-[#242424] text-xs font-semibold text-gray-200 flex items-center justify-between shrink-0">
+          <div
+            onMouseDown={startInspectorResize}
+            title="Drag to resize Inspector"
+            className={`w-1.5 shrink-0 cursor-col-resize bg-[#222222] hover:bg-blue-500/70 transition-colors ${
+              !visibleWindows.inspector ? 'hidden' : ''
+            }`}
+          />
+
+          <aside
+            style={{ width: inspectorWidth }}
+            className={`shrink-0 border-l border-[#2a2a2a] bg-[#1e1e1e] flex flex-col min-h-0 ${
+              !visibleWindows.inspector ? 'hidden' : ''
+            }`}
+          >
+            <div className="px-3 py-1.5 border-b border-[#2a2a2a] bg-[#242424] text-xs font-semibold text-gray-200 flex items-center justify-between shrink-0">
               <span>Inspector</span>
-              <span className="text-[10px] font-normal text-gray-400 uppercase tracking-wider">
-                {activeViewModeTab}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-normal text-gray-400 uppercase tracking-wider">
+                  {activeViewModeTab}
+                </span>
+                <Button
+                  small
+                  minimal
+                  icon="cross"
+                  title="Hide Inspector"
+                  onClick={() => toggleWindow('inspector')}
+                />
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -1447,82 +1497,6 @@ export default function ViewerView({ active }: { active: boolean }) {
               <summary>How this works</summary>
               <p className="hint">
                 Every visible layer is drawn; the <b>active</b> one (click its name) is what every tool works on. Double-click a name to rename it. <b>Add file…</b> opens another scan alongside this one — so does dropping a file with <b>Shift</b> held — while <b>Open file…</b> replaces everything. A tint multiplies a layer&apos;s colour so two overlapping scans can be told apart.
-              </p>
-            </details>
-          </div>
-
-          <div className="grp hidden" data-grp="register">
-            <H3>Register</H3>
-
-            <label className="row">
-              <span>Reference</span>
-              <HTMLSelect id="k-regref" />
-            </label>
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-regcentres" size="small">
-                Match centres
-              </Button>
-
-              <Button id="k-regscales" size="small">
-                Match scales
-              </Button>
-            </ButtonGroup>
-
-            <label className="row">
-              <span title="Pairs further apart than this many point spacings are ignored, and the limit tightens as it converges.">
-                Max distance
-              </span>
-              <input
-                type="range"
-                id="k-regdist"
-                min="1"
-                max="30"
-                step="0.5"
-                defaultValue="6"
-              />
-              <b className="mono" id="v-regdist">
-                6
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Max iterations</span>
-              <input
-                type="range"
-                id="k-regiter"
-                min="5"
-                max="80"
-                step="1"
-                defaultValue="30"
-              />
-              <b className="mono" id="v-regiter">
-                30
-              </b>
-            </label>
-
-            <Button
-              id="k-regicp"
-              intent={Intent.PRIMARY}
-              fill
-              size="small"
-              className="mb-1.5"
-            >
-              Fine registration (ICP)…
-            </Button>
-
-            <Button id="k-regdistance" fill size="small" className="mb-1.5">
-              Distance to reference
-            </Button>
-
-            <p className="statusline" id="v-register">
-              —
-            </p>
-
-            <details className="sub">
-              <summary>How this works</summary>
-              <p className="hint">
-                Moves the <b>active</b> layer onto the reference and never touches the reference. <b>Match centres</b> and <b>Match scales</b> are the coarse step; <b>ICP</b> is point-to-plane and lands on the reference&apos;s own surfaces. <b>Distance to reference</b> writes a scalar field on the active layer, so the colour ramp and the histogram show where the two disagree.
               </p>
             </details>
           </div>
@@ -1687,343 +1661,6 @@ export default function ViewerView({ active }: { active: boolean }) {
                 0.00 – 1.00
               </b>
             </div>
-          </div>
-
-          <div className="grp hidden">
-            <H3>Clipping</H3>
-
-            <label className="row">
-              <span>Height min</span>
-              <input
-                type="range"
-                id="k-zmin"
-                min="0"
-                max="1"
-                step="0.005"
-                defaultValue="0"
-              />
-              <b className="mono" id="v-zmin">
-                —
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Height max</span>
-              <input
-                type="range"
-                id="k-zmax"
-                min="0"
-                max="1"
-                step="0.005"
-                defaultValue="1"
-              />
-              <b className="mono" id="v-zmax">
-                —
-              </b>
-            </label>
-          </div>
-
-          <div className="grp hidden">
-            <H3>Performance</H3>
-
-            <label className="row">
-              <span>Points per frame</span>
-              <HTMLSelect id="k-budget" defaultValue="16000000">
-                <option value="1000000">1 M</option>
-                <option value="2000000">2 M</option>
-                <option value="4000000">4 M</option>
-                <option value="8000000">8 M</option>
-                <option value="16000000">16 M</option>
-                <option value="32000000">32 M</option>
-              </HTMLSelect>
-            </label>
-
-            <label className="row">
-              <span>Density</span>
-              <input
-                type="range"
-                id="k-density"
-                min="0.3"
-                max="4"
-                step="0.05"
-                defaultValue="2.5"
-              />
-              <b className="mono" id="v-density">
-                2.50
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Max point px</span>
-              <input
-                type="range"
-                id="k-maxpx"
-                min="2"
-                max="24"
-                step="0.5"
-                defaultValue="12"
-              />
-              <b className="mono" id="v-maxpx">
-                12.0
-              </b>
-            </label>
-
-            <label className="row">
-              <span>While moving</span>
-              <input
-                type="range"
-                id="k-moving"
-                min="0.1"
-                max="1"
-                step="0.05"
-                defaultValue="0.35"
-              />
-              <b className="mono" id="v-moving">
-                0.35
-              </b>
-            </label>
-
-            <p className="statusline" id="v-stats">
-              —
-            </p>
-
-            <label className="row">
-              <span>In memory</span>
-              <HTMLSelect id="k-load" defaultValue="1">
-                <option value="1">Everything</option>
-                <option value="2">1 in 2</option>
-                <option value="4">1 in 4</option>
-                <option value="10">1 in 10</option>
-                <option value="30">1 in 30</option>
-              </HTMLSelect>
-            </label>
-
-            <p className="statusline" id="v-loaded">
-              —
-            </p>
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-undo" size="small" disabled>
-                Undo
-              </Button>
-
-              <Button id="k-redo" size="small" disabled>
-                Redo
-              </Button>
-            </ButtonGroup>
-
-            <Button
-              id="k-save"
-              intent={Intent.PRIMARY}
-              fill
-              size="small"
-              disabled
-              className="mb-1.5"
-            >
-              Save as…
-            </Button>
-
-            <Button id="k-reload" fill size="small" className="mb-1.5">
-              Reload
-            </Button>
-
-            <Button id="k-open" fill size="small" className="mb-1.5">
-              View from file…
-            </Button>
-
-            <Button
-              id="k-close"
-              intent={Intent.DANGER}
-              fill
-              size="small"
-              className="mb-1.5"
-            >
-              Close scan
-            </Button>
-
-            <p className="hint">
-              Undo/redo cover crop and section edits. <b>Save as…</b> writes a copy of the current points to a file you choose, updates the on-device cache if there is one, and clears undo. <b>⌘Z</b> / <b>⇧⌘Z</b> / <b>⌘S</b>. Escape cancels a crop region.
-            </p>
-
-            <p className="statusline" id="v-hist">
-              —
-            </p>
-          </div>
-
-          <div className="grp hidden" data-grp="crop">
-            <H3>Crop</H3>
-
-            <label className="row">
-              <span>Shape</span>
-              <HTMLSelect id="k-cropshape" defaultValue="box">
-                <option value="box">Box</option>
-                <option value="sphere">Sphere</option>
-                <option value="slab">Slab</option>
-              </HTMLSelect>
-            </label>
-
-            <Switch
-              id="k-cropon"
-              label="Show region"
-              alignIndicator={Alignment.END}
-              className="row flex! w-full items-center justify-between"
-            />
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-cropkeep" size="small" className="on">
-                Keep inside
-              </Button>
-
-              <Button id="k-cropdel" size="small">
-                Remove inside
-              </Button>
-            </ButtonGroup>
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-cropmove" size="small" className="on">
-                Move
-              </Button>
-
-              <Button id="k-croprotate" size="small">
-                Rotate
-              </Button>
-
-              <Button id="k-cropresize" size="small">
-                Resize
-              </Button>
-            </ButtonGroup>
-
-            <Switch
-              id="k-crophide"
-              label="Hide outside"
-              alignIndicator={Alignment.END}
-              className="row flex! w-full items-center justify-between"
-            />
-
-            <label className="row">
-              <span>Size</span>
-              <input
-                type="range"
-                id="k-cropsize"
-                min="0"
-                max="1"
-                step="0.002"
-                defaultValue="0.35"
-              />
-              <b className="mono" id="v-cropsize">
-                —
-              </b>
-            </label>
-
-            <label className="row box-only">
-              <span>Depth</span>
-              <input
-                type="range"
-                id="k-cropsy"
-                min="0"
-                max="1"
-                step="0.002"
-                defaultValue="0.35"
-              />
-              <b className="mono" id="v-cropsy">
-                —
-              </b>
-            </label>
-
-            <label className="row box-only">
-              <span>Height</span>
-              <input
-                type="range"
-                id="k-cropsz"
-                min="0"
-                max="1"
-                step="0.002"
-                defaultValue="0.35"
-              />
-              <b className="mono" id="v-cropsz">
-                —
-              </b>
-            </label>
-
-            <label className="row prism-only">
-              <span>Prism depth</span>
-              <input
-                type="range"
-                id="k-prismdepth"
-                min="0.004"
-                max="1"
-                step="0.004"
-                defaultValue="1"
-              />
-              <b className="mono" id="v-prismdepth">
-                —
-              </b>
-            </label>
-
-            <Button id="k-cropcentre" fill size="small" className="mb-1.5">
-              Centre on orbit point
-            </Button>
-
-            <p className="lab mono">NEW REGION</p>
-
-            <div className="row">
-              <span>Shape</span>
-              <HTMLSelect id="k-newshape" defaultValue="box">
-                <option value="box">Box</option>
-                <option value="sphere">Sphere</option>
-              </HTMLSelect>
-            </div>
-
-            <Button id="k-place" fill size="small" className="mb-1.5">
-              Create region (S)
-            </Button>
-
-            <ButtonGroup fill className="mb-2 region-active">
-              <Button id="k-grow" size="small">
-                Grow ×1.5
-              </Button>
-
-              <Button id="k-shrink" size="small">
-                Shrink ÷1.5
-              </Button>
-            </ButtonGroup>
-
-            <Button
-              id="k-fitcontents"
-              fill
-              size="small"
-              className="mb-1.5 region-active"
-            >
-              Fit to contents
-            </Button>
-
-            <Button id="k-segment" fill size="small" className="mb-1.5">
-              Draw an outline… (⇧S)
-            </Button>
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-cropcancel" size="small">
-                Cancel region
-              </Button>
-
-              <Button id="k-cropapply" intent={Intent.PRIMARY} size="small">
-                Apply crop…
-              </Button>
-            </ButtonGroup>
-
-            <p className="statusline" id="v-crop">
-              —
-            </p>
-
-            <details className="sub">
-              <summary>How this works</summary>
-              <p className="hint">
-                Click <b>Create region</b> then click a point on the cloud: a small shape appears there, ready to resize. <b>Grow</b>, the handles, the size sliders, or <b>Alt</b> + scroll while it is active all enlarge it; <b>Fit to contents</b> grows it until it stops finding new points and then tightens onto them.
-              </p>
-              <p className="hint">
-                Drag the arrows to move, the rings to rotate, the handles to resize. Double-click a point to move the orbit centre, then centre the region there. <b>Keep inside</b> dims everything outside the region; <b>Remove inside</b> dims what is inside it — either way the preview is what Apply will leave behind. <b>Escape</b> cancels the region.
-              </p>
-            </details>
           </div>
 
           <div className="grp" data-grp="clean">
@@ -2896,7 +2533,31 @@ export default function ViewerView({ active }: { active: boolean }) {
         />
       </Dialog>
 
-      <ScanTimeline />
+      <div
+        style={timelineHeight ? { height: timelineHeight } : undefined}
+        className={`shrink-0 flex flex-col bg-[#1a1a1a] border-t border-[#2a2a2a] ${
+          !viewerTreeId || !visibleWindows.timeline ? 'hidden' : ''
+        }`}
+      >
+        <div
+          onMouseDown={startTimelineResize}
+          title="Drag to resize Timeline"
+          className="h-1.5 shrink-0 cursor-row-resize bg-[#222222] hover:bg-blue-500/70 transition-colors"
+        />
+        <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#242424] text-[11px] font-semibold text-gray-300 flex items-center justify-between shrink-0">
+          <span>Timeline</span>
+          <Button
+            small
+            minimal
+            icon="cross"
+            title="Hide Timeline"
+            onClick={() => toggleWindow('timeline')}
+          />
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ScanTimeline />
+        </div>
+      </div>
     </div>
   )
 }
