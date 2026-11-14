@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as THREE from 'three'
 import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d'
 import { Button, HTMLSelect, Intent, Spinner } from '@blueprintjs/core'
@@ -99,11 +100,9 @@ function buildSplatBufferFromViewer(maxSplats: number, splatRadius: number): {
 }
 
 export default function GaussianSplatOverlay({
-  isPanelOpen,
-  onClosePanel,
+  inspectorEl,
 }: {
-  isPanelOpen: boolean
-  onClosePanel: () => void
+  inspectorEl: HTMLDivElement | null
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const splatViewerRef = useRef<any>(null)
@@ -233,8 +232,72 @@ export default function GaussianSplatOverlay({
     URL.revokeObjectURL(url)
   }
 
+  const inspectorControls = (
+    <div className="p-3 border-b border-[#2a2a2a] text-xs text-white space-y-2.5">
+      <div className="font-semibold text-gray-200">
+        3D Gaussian Splatting (.splat / .ply)
+      </div>
+
+      <label className="flex items-center justify-between gap-2">
+        <span className="text-gray-300">Max splats</span>
+        <HTMLSelect
+          value={maxSplats}
+          onChange={(e) => setMaxSplats(Number(e.target.value))}
+        >
+          <option value={50000}>50,000 (Fast)</option>
+          <option value={150000}>150,000 (Balanced)</option>
+          <option value={350000}>350,000 (Dense)</option>
+        </HTMLSelect>
+      </label>
+
+      <label className="flex items-center justify-between gap-2">
+        <span className="text-gray-300">Splat radius</span>
+        <input
+          type="range"
+          min="0.005"
+          max="0.15"
+          step="0.005"
+          value={splatRadius}
+          onChange={(e) => setSplatRadius(Number(e.target.value))}
+          className="flex-1"
+        />
+        <b className="mono w-14 text-right">{splatRadius.toFixed(3)} m</b>
+      </label>
+
+      <Button
+        fill
+        small
+        intent={Intent.PRIMARY}
+        icon="refresh"
+        onClick={() => void generateFromScan()}
+      >
+        Rebuild splats from scan
+      </Button>
+
+      {lastBufferRef.current && (
+        <Button fill small icon="download" onClick={handleDownloadSplat}>
+          Export .splat file…
+        </Button>
+      )}
+
+      <label className="block">
+        <span className="bp6-button bp6-fill bp6-small cursor-pointer text-center">
+          Open .splat / .ply / .ksplat file…
+        </span>
+        <input
+          type="file"
+          accept=".splat,.ply,.ksplat"
+          className="hidden"
+          onChange={(e) => void handleLoadExternalFile(e)}
+        />
+      </label>
+
+      <p className="text-[11px] text-gray-400">{error ?? status}</p>
+    </div>
+  )
+
   return (
-    <div className="absolute inset-0 top-12 z-[9] bg-[#111111]">
+    <div className="absolute inset-0 z-[9] bg-[#111111]">
       <div ref={containerRef} className="w-full h-full" />
 
       {isLoading && (
@@ -246,79 +309,7 @@ export default function GaussianSplatOverlay({
         </div>
       )}
 
-      {isPanelOpen && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 w-80 bg-[#1e1e1e]/95 backdrop-blur-md p-3 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
-          <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-[#333333]">
-            <span className="font-semibold text-gray-200">
-              3D Gaussian Splatting (.splat / .ply)
-            </span>
-            <Button small minimal icon="cross" onClick={onClosePanel} />
-          </div>
-
-          <div className="space-y-2.5">
-            <label className="flex items-center justify-between gap-2">
-              <span className="text-gray-300">Max splats</span>
-              <HTMLSelect
-                value={maxSplats}
-                onChange={(e) => setMaxSplats(Number(e.target.value))}
-              >
-                <option value={50000}>50,000 (Fast)</option>
-                <option value={150000}>150,000 (Balanced)</option>
-                <option value={350000}>350,000 (Dense)</option>
-              </HTMLSelect>
-            </label>
-
-            <label className="flex items-center justify-between gap-2">
-              <span className="text-gray-300">Splat radius</span>
-              <input
-                type="range"
-                min="0.005"
-                max="0.15"
-                step="0.005"
-                value={splatRadius}
-                onChange={(e) => setSplatRadius(Number(e.target.value))}
-                className="flex-1"
-              />
-              <b className="mono w-14 text-right">{splatRadius.toFixed(3)} m</b>
-            </label>
-
-            <Button
-              fill
-              small
-              intent={Intent.PRIMARY}
-              icon="refresh"
-              onClick={() => void generateFromScan()}
-            >
-              Rebuild splats from scan
-            </Button>
-
-            {lastBufferRef.current && (
-              <Button
-                fill
-                small
-                icon="download"
-                onClick={handleDownloadSplat}
-              >
-                Export .splat file…
-              </Button>
-            )}
-
-            <label className="block">
-              <span className="bp6-button bp6-fill bp6-small cursor-pointer text-center">
-                Open .splat / .ply / .ksplat file…
-              </span>
-              <input
-                type="file"
-                accept=".splat,.ply,.ksplat"
-                className="hidden"
-                onChange={(e) => void handleLoadExternalFile(e)}
-              />
-            </label>
-
-            <p className="text-[11px] text-gray-400">{error ?? status}</p>
-          </div>
-        </div>
-      )}
+      {inspectorEl && createPortal(inspectorControls, inspectorEl)}
     </div>
   )
 }

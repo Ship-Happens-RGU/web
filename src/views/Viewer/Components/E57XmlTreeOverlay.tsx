@@ -199,7 +199,7 @@ export default function E57XmlTreeOverlay() {
   }, [loadFromFile])
 
   return (
-    <div className="absolute inset-0 top-12 z-[9] bg-[#111111] flex flex-col pt-14 px-6 pb-6 overflow-hidden">
+    <div className="absolute inset-0 z-[9] bg-[#111111] flex flex-col p-4 overflow-hidden">
       <div className="max-w-5xl w-full mx-auto flex flex-col h-full rounded-xl border border-[#2a2a2a] bg-[#181818] shadow-2xl overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-[#2a2a2a] bg-[#1e1e1e]">
           <div className="flex items-center gap-2">

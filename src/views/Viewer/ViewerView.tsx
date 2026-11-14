@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as THREE from 'three'
 import {
   Alignment,
@@ -67,7 +68,9 @@ export default function ViewerView({ active }: { active: boolean }) {
   const [isBlinking, setIsBlinking] = useState(false)
   const blinkTimerRef = useRef<number | null>(null)
   const [activeViewModeTab, setActiveViewModeTab] = useState<ViewMode>('points')
-  const [isTabPanelOpen, setIsTabPanelOpen] = useState(false)
+  const [inspectorSlotEl, setInspectorSlotEl] = useState<HTMLDivElement | null>(
+    null,
+  )
 
   const baseScan = useMemo(() => {
     return scans.find((s) => s.id === selectedScanId) ?? (scans.length > 0 ? scans[scans.length - 1] : null)
@@ -189,7 +192,6 @@ export default function ViewerView({ active }: { active: boolean }) {
 
   useEffect(() => {
     setActiveViewModeTab('points')
-    setIsTabPanelOpen(false)
     if (isComparing) {
       handleExitCompare()
     }
@@ -201,16 +203,12 @@ export default function ViewerView({ active }: { active: boolean }) {
       const app = (window as unknown as { __app?: any }).__app
 
       if (activeViewModeTab === mode) {
-        if (mode !== 'points' && mode !== 'xml') {
-          setIsTabPanelOpen((open) => !open)
-        }
         return
       }
 
       setActiveViewModeTab(mode)
 
       if (mode === 'points') {
-        setIsTabPanelOpen(false)
         viewer?.exitBubble?.()
         app?.setDisplay?.('points')
         viewer?.fit?.()
@@ -218,12 +216,9 @@ export default function ViewerView({ active }: { active: boolean }) {
       }
 
       if (mode === 'xml') {
-        setIsTabPanelOpen(false)
         viewer?.exitBubble?.()
         return
       }
-
-      setIsTabPanelOpen(true)
 
       if (mode === 'mesh') {
         viewer?.exitBubble?.()
@@ -417,13 +412,15 @@ export default function ViewerView({ active }: { active: boolean }) {
       )}
 
       <div
-        className={`viewer-root bp6-dark min-h-0 flex-1 ${
+        className={`viewer-root bp6-dark min-h-0 flex-1 flex! flex-col! ${
           !viewerTreeId ? 'hidden' : ''
         }`}
       >
-        <canvas id="gl" />
-
-        <Navbar id="topbar" className="hidden">
+        <div className="shrink-0 bg-[#1e1e1e] border-b border-[#2a2a2a]">
+          <Navbar
+            id="topbar"
+            className="static! w-full! bg-[#1e1e1e]! border-b! border-[#2a2a2a]! shadow-none! px-3!"
+          >
           <NavbarGroup align={Alignment.START} className="flex items-center gap-2.5">
             <Text className="name" id="tb-name">
               —
@@ -503,24 +500,7 @@ export default function ViewerView({ active }: { active: boolean }) {
           </NavbarGroup>
         </Navbar>
 
-        {activeViewModeTab === 'splat' && (
-          <GaussianSplatOverlay
-            isPanelOpen={isTabPanelOpen}
-            onClosePanel={() => setIsTabPanelOpen(false)}
-          />
-        )}
-
-        {activeViewModeTab === 'unwrapped' && (
-          <UnwrappedScanOverlay
-            isPanelOpen={isTabPanelOpen}
-            onClosePanel={() => setIsTabPanelOpen(false)}
-          />
-        )}
-
-        {activeViewModeTab === 'xml' && <E57XmlTreeOverlay />}
-
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none max-w-[95vw]">
-          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1 bg-[#1e1e1e]/95 backdrop-blur-md px-2 py-1.5 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
+          <div className="flex flex-wrap items-center justify-center gap-1 px-3 py-1.5 bg-[#191919] text-xs text-white">
             <Button
               small
               minimal={activeViewModeTab !== 'points'}
@@ -606,38 +586,45 @@ export default function ViewerView({ active }: { active: boolean }) {
               XML / Metadata
             </Button>
           </div>
+        </div>
 
-          <div
-            className={`pointer-events-auto w-80 max-h-[calc(100vh-10rem)] overflow-y-auto bg-[#1e1e1e]/95 backdrop-blur-md p-3 rounded-lg border border-[#333333] shadow-2xl text-xs text-white ${
-              isTabPanelOpen &&
-              activeViewModeTab &&
-              activeViewModeTab !== 'points' &&
-              activeViewModeTab !== 'splat' &&
-              activeViewModeTab !== 'unwrapped' &&
-              activeViewModeTab !== 'xml'
-                ? ''
-                : 'hidden'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-[#333333]">
-              <span className="font-semibold text-gray-200">
-                {activeViewModeTab === 'mesh' &&
-                  '3D Triangle Mesh (Surface Reconstruction)'}
-                {activeViewModeTab === 'stations' &&
-                  '360° Panorama / Station Views'}
-                {activeViewModeTab === 'raster' &&
-                  '2D Elevation / Height Maps & Contours'}
-                {activeViewModeTab === 'sections' &&
-                  '2D Cross-Sections, Slices & Floor Plans'}
-              </span>
-              <Button
-                small
-                minimal
-                icon="cross"
-                title="Close panel"
-                onClick={() => setIsTabPanelOpen(false)}
-              />
-            </div>
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          <div className="relative flex-1 min-w-0 min-h-0 bg-[#111111] overflow-hidden">
+            <canvas id="gl" />
+
+            {activeViewModeTab === 'splat' && (
+              <GaussianSplatOverlay inspectorEl={inspectorSlotEl} />
+            )}
+
+            {activeViewModeTab === 'unwrapped' && (
+              <UnwrappedScanOverlay inspectorEl={inspectorSlotEl} />
+            )}
+
+            {activeViewModeTab === 'xml' && <E57XmlTreeOverlay />}
+
+            {inspectorSlotEl &&
+              createPortal(
+                <div
+                  className={`p-3 border-b border-[#2a2a2a] text-xs text-white ${
+                    activeViewModeTab &&
+                    activeViewModeTab !== 'points' &&
+                    activeViewModeTab !== 'splat' &&
+                    activeViewModeTab !== 'unwrapped' &&
+                    activeViewModeTab !== 'xml'
+                      ? ''
+                      : 'hidden'
+                  }`}
+                >
+                  <div className="mb-2 pb-1.5 border-b border-[#2a2a2a] font-semibold text-gray-200">
+                    {activeViewModeTab === 'mesh' &&
+                      '3D Triangle Mesh (Surface Reconstruction)'}
+                    {activeViewModeTab === 'stations' &&
+                      '360° Panorama / Station Views'}
+                    {activeViewModeTab === 'raster' &&
+                      '2D Elevation / Height Maps & Contours'}
+                    {activeViewModeTab === 'sections' &&
+                      '2D Cross-Sections, Slices & Floor Plans'}
+                  </div>
 
             <div
               className={`grp ${activeViewModeTab === 'sections' ? '' : 'hidden'}`}
@@ -1239,10 +1226,12 @@ export default function ViewerView({ active }: { active: boolean }) {
                 </p>
               </details>
             </div>
-          </div>
+          </div>,
+                inspectorSlotEl,
+              )}
 
           {isComparing && (
-            <div className="pointer-events-auto flex flex-wrap items-center gap-3 bg-[#1e1e1e]/95 backdrop-blur-md px-4 py-2 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex flex-wrap items-center gap-3 bg-[#1e1e1e]/95 backdrop-blur-md px-4 py-2 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_6px_#34d399]" />
               <span className="font-semibold text-gray-300">Base:</span>
@@ -1334,7 +1323,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </span>
           </div>
           )}
-        </div>
 
         <div id="drop" className="bg-[#111111]!">
           <div className="flex flex-col items-center justify-center">
@@ -1398,11 +1386,27 @@ export default function ViewerView({ active }: { active: boolean }) {
             </p>
           </Card>
         </div>
-
-        <Card id="panel" elevation={2} className="hidden p-0!">
-          <div id="grabber" aria-hidden="true">
-            <i />
           </div>
+
+          <aside className="w-80 shrink-0 border-l border-[#2a2a2a] bg-[#1e1e1e] flex flex-col min-h-0">
+            <div className="px-3 py-2 border-b border-[#2a2a2a] bg-[#242424] text-xs font-semibold text-gray-200 flex items-center justify-between shrink-0">
+              <span>Inspector</span>
+              <span className="text-[10px] font-normal text-gray-400 uppercase tracking-wider">
+                {activeViewModeTab}
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <div ref={setInspectorSlotEl} />
+
+              <Card
+                id="panel"
+                elevation={0}
+                className="static! w-full! inset-auto! max-h-none! border-0! rounded-none! shadow-none! bg-transparent! p-0! block!"
+              >
+                <div id="grabber" aria-hidden="true" className="hidden!">
+                  <i />
+                </div>
 
           <div className="grp" data-grp="layers">
             <H3>Layers</H3>
@@ -2667,7 +2671,10 @@ export default function ViewerView({ active }: { active: boolean }) {
               <b>W A S D</b> move · <b>Q E</b> down/up · drag to look · scroll changes speed · <b>Shift</b> ×4 · double-click moves toward a point
             </p>
           </div>
-        </Card>
+              </Card>
+            </div>
+          </aside>
+        </div>
 
         <ButtonGroup id="toolbar" className="hidden">
           <Button data-tool="fly" size="small" className="on">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as THREE from 'three'
 import { Button, HTMLSelect, Intent, Spinner } from '@blueprintjs/core'
 
@@ -13,11 +14,9 @@ function turboColor(t: number): [number, number, number] {
 }
 
 export default function UnwrappedScanOverlay({
-  isPanelOpen,
-  onClosePanel,
+  inspectorEl,
 }: {
-  isPanelOpen: boolean
-  onClosePanel: () => void
+  inspectorEl: HTMLDivElement | null
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [colorBy, setColorBy] = useState<ColorMode>('range')
@@ -180,8 +179,66 @@ export default function UnwrappedScanOverlay({
     a.click()
   }
 
+  const inspectorControls = (
+    <div className="p-3 border-b border-[#2a2a2a] text-xs text-white space-y-2.5">
+      <div className="font-semibold text-gray-200">
+        Depth / Range / Intensity (2D Unwrapped)
+      </div>
+
+      <label className="flex items-center justify-between gap-2">
+        <span className="text-gray-300">Channel</span>
+        <HTMLSelect
+          value={colorBy}
+          onChange={(e) => setColorBy(e.target.value as ColorMode)}
+        >
+          <option value="range">Range (Depth)</option>
+          <option value="intensity">Laser Intensity</option>
+          <option value="normals">Surface Normals</option>
+          <option value="rgb">RGB Color</option>
+        </HTMLSelect>
+      </label>
+
+      {stationCount > 1 && (
+        <label className="flex items-center justify-between gap-2">
+          <span className="text-gray-300">Station</span>
+          <HTMLSelect
+            value={stationIndex}
+            onChange={(e) => setStationIndex(Number(e.target.value))}
+          >
+            {Array.from({ length: stationCount }, (_, i) => (
+              <option key={i} value={i}>
+                Station {i + 1}
+              </option>
+            ))}
+          </HTMLSelect>
+        </label>
+      )}
+
+      <label className="flex items-center justify-between gap-2 cursor-pointer">
+        <span className="text-gray-300">Fill 1px gaps</span>
+        <input
+          type="checkbox"
+          checked={fillGaps}
+          onChange={(e) => setFillGaps(e.target.checked)}
+        />
+      </label>
+
+      <Button
+        fill
+        small
+        intent={Intent.PRIMARY}
+        icon="download"
+        onClick={handleDownload}
+      >
+        Save unwrapped PNG…
+      </Button>
+
+      <p className="text-[11px] text-gray-400">{info}</p>
+    </div>
+  )
+
   return (
-    <div className="absolute inset-0 top-12 z-[9] bg-[#111111] flex flex-col items-center justify-center p-4">
+    <div className="absolute inset-0 z-[9] bg-[#111111] flex flex-col items-center justify-center p-4">
       <div className="relative w-full h-full flex items-center justify-center">
         <canvas
           ref={canvasRef}
@@ -197,68 +254,7 @@ export default function UnwrappedScanOverlay({
         )}
       </div>
 
-      {isPanelOpen && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 w-80 bg-[#1e1e1e]/95 backdrop-blur-md p-3 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
-          <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-[#333333]">
-            <span className="font-semibold text-gray-200">
-              Depth / Range / Intensity (2D Unwrapped)
-            </span>
-            <Button small minimal icon="cross" onClick={onClosePanel} />
-          </div>
-
-          <div className="space-y-2.5">
-            <label className="flex items-center justify-between gap-2">
-              <span className="text-gray-300">Channel</span>
-              <HTMLSelect
-                value={colorBy}
-                onChange={(e) => setColorBy(e.target.value as ColorMode)}
-              >
-                <option value="range">Range (Depth)</option>
-                <option value="intensity">Laser Intensity</option>
-                <option value="normals">Surface Normals</option>
-                <option value="rgb">RGB Color</option>
-              </HTMLSelect>
-            </label>
-
-            {stationCount > 1 && (
-              <label className="flex items-center justify-between gap-2">
-                <span className="text-gray-300">Station</span>
-                <HTMLSelect
-                  value={stationIndex}
-                  onChange={(e) => setStationIndex(Number(e.target.value))}
-                >
-                  {Array.from({ length: stationCount }, (_, i) => (
-                    <option key={i} value={i}>
-                      Station {i + 1}
-                    </option>
-                  ))}
-                </HTMLSelect>
-              </label>
-            )}
-
-            <label className="flex items-center justify-between gap-2 cursor-pointer">
-              <span className="text-gray-300">Fill 1px gaps</span>
-              <input
-                type="checkbox"
-                checked={fillGaps}
-                onChange={(e) => setFillGaps(e.target.checked)}
-              />
-            </label>
-
-            <Button
-              fill
-              small
-              intent={Intent.PRIMARY}
-              icon="download"
-              onClick={handleDownload}
-            >
-              Save unwrapped PNG…
-            </Button>
-
-            <p className="text-[11px] text-gray-400">{info}</p>
-          </div>
-        </div>
-      )}
+      {inspectorEl && createPortal(inspectorControls, inspectorEl)}
     </div>
   )
 }
