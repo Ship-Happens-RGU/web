@@ -2626,15 +2626,9 @@ export default function ViewerView({ active }: { active: boolean }) {
           <div className="grp">
             <H3>View</H3>
 
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-orbit" size="small" className="on">
-                Orbit
-              </Button>
-
-              <Button id="k-fly" size="small">
-                Fly
-              </Button>
-            </ButtonGroup>
+            <Button id="k-fly" fill size="small" className="on mb-2">
+              Fly
+            </Button>
 
             <label className="row">
               <span>Fly speed</span>
@@ -2660,17 +2654,13 @@ export default function ViewerView({ active }: { active: boolean }) {
             </Button>
 
             <p className="hint" id="v-navhint">
-              Drag to orbit · scroll zooms toward the cursor · <b>double-click</b> a point to orbit around it
+              <b>W A S D</b> move · <b>Q E</b> down/up · drag to look · scroll changes speed · <b>Shift</b> ×4 · double-click moves toward a point
             </p>
           </div>
         </Card>
 
         <ButtonGroup id="toolbar" className="hidden">
-          <Button data-tool="orbit" size="small" className="on">
-            Orbit
-          </Button>
-
-          <Button data-tool="fly" size="small">
+          <Button data-tool="fly" size="small" className="on">
             Fly
           </Button>
 
