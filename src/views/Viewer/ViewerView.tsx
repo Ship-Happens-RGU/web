@@ -19,14 +19,12 @@ import {
   Menu,
   MenuDivider,
   MenuItem,
-  Popover,
   ProgressBar,
   Slider,
   Switch,
   Tag,
   Text,
 } from '@blueprintjs/core'
-import PageHeader from '@/components/PageHeader'
 import { useScanTree } from '@/composables/ApiWrappers/Scans/useScanTree'
 import { useTreeScans } from '@/composables/ApiWrappers/Scans/useTreeScans'
 import { useScanSession } from '@/composables/useScanSession'
@@ -80,6 +78,27 @@ export default function ViewerView({ active }: { active: boolean }) {
   })
   const [inspectorWidth, setInspectorWidth] = useState(320)
   const [timelineHeight, setTimelineHeight] = useState<number | null>(null)
+  const [isPointCloudReady, setIsPointCloudReady] = useState(false)
+  const [isViewsMenuOpen, setIsViewsMenuOpen] = useState(false)
+  const viewsMenuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!isViewsMenuOpen) return
+    const handlePointerDown = (e: MouseEvent) => {
+      if (viewsMenuRef.current && !viewsMenuRef.current.contains(e.target as Node)) {
+        setIsViewsMenuOpen(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsViewsMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isViewsMenuOpen])
 
   const toggleWindow = useCallback(
     (key: 'toolbar' | 'viewport' | 'inspector' | 'timeline') => {
@@ -265,10 +284,29 @@ export default function ViewerView({ active }: { active: boolean }) {
 
   useEffect(() => {
     setActiveViewModeTab('points')
+    setIsPointCloudReady(false)
     if (isComparing) {
       handleExitCompare()
     }
   }, [selectedScanId, viewerTreeId, handleExitCompare])
+
+  useEffect(() => {
+    if (!viewerTreeId || isPointCloudReady) return
+    const timer = window.setInterval(() => {
+      const viewer = (window as unknown as { __viewer?: any }).__viewer
+      const loadingEl = document.getElementById('loading')
+      const isLoadingVisible = loadingEl ? !loadingEl.classList.contains('hidden') : false
+      if (
+        viewer &&
+        viewer.loaded > 0 &&
+        viewer.pendingUploads === 0 &&
+        !isLoadingVisible
+      ) {
+        setIsPointCloudReady(true)
+      }
+    }, 200)
+    return () => window.clearInterval(timer)
+  }, [viewerTreeId, isPointCloudReady])
 
   const handleSelectViewMode = useCallback(
     (mode: ViewMode) => {
@@ -458,31 +496,29 @@ export default function ViewerView({ active }: { active: boolean }) {
         active ? '' : 'hidden'
       }`}
     >
-      <PageHeader
-        icon="cube"
-        crumbs={
-          viewerTreeId && treeQuery.data
-            ? [{ label: 'ShipHappens' }, { label: 'Viewer' }, { label: treeQuery.data.name }]
-            : [{ label: 'ShipHappens' }, { label: 'Viewer' }]
-        }
-        actions={
-          viewerTreeId ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <div className="flex items-center gap-2 text-gray-300 pr-2 border-r border-[#333333]">
-                <Text className="font-medium max-w-[160px] truncate" id="tb-name">
-                  —
-                </Text>
-                <Tag id="tb-layer" minimal className="hidden" />
+      {viewerTreeId && (
+        <div className="shrink-0 flex h-16 min-h-16 items-center justify-between gap-4 px-6 bg-[#1c1c1c] border-b border-white/10 text-xs">
+          <div className="flex items-center gap-2 text-gray-300">
+            {treeQuery.data?.name && (
+              <>
+                <span className="text-base font-semibold text-white/87">
+                  {treeQuery.data.name}
+                </span>
                 <span className="text-gray-600">·</span>
-                <Text className="mono text-[11px] text-gray-400" id="tb-points">
-                  —
-                </Text>
-                <span className="text-gray-600">·</span>
-                <Text className="mono text-[11px] text-gray-400" id="tb-fps">
-                  —
-                </Text>
-                <Tag id="tb-tool" intent={Intent.PRIMARY} minimal className="hidden" />
-              </div>
+              </>
+            )}
+            <Tag id="tb-layer" minimal className="hidden" />
+            <Text className="mono text-[11px] text-gray-400" id="tb-points">
+              —
+            </Text>
+            <span className="text-gray-600">·</span>
+            <Text className="mono text-[11px] text-gray-400" id="tb-fps">
+              —
+            </Text>
+            <Tag id="tb-tool" intent={Intent.PRIMARY} minimal className="hidden" />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
 
               <div className="flex items-center gap-1 pr-2 border-r border-[#333333]">
                 <Button id="tb-undo" size="small" variant="minimal" disabled title="Undo (⌘Z)">
@@ -512,65 +548,64 @@ export default function ViewerView({ active }: { active: boolean }) {
                   variant="minimal"
                   icon="cross"
                   title="Close scan"
-                  onClick={handleExitCompare}
+                  onClick={() => {
+                    handleExitCompare()
+                    closeViewerTree()
+                  }}
                 >
                   Close scan
                 </Button>
               </div>
 
-              <Popover
-                content={
-                  <Menu>
-                    <MenuItem
-                      icon={visibleWindows.toolbar ? 'tick' : 'blank'}
-                      text="View Modes Bar"
-                      onClick={() => toggleWindow('toolbar')}
-                    />
-                    <MenuItem
-                      icon={visibleWindows.viewport ? 'tick' : 'blank'}
-                      text="Scene Viewport"
-                      onClick={() => toggleWindow('viewport')}
-                    />
-                    <MenuItem
-                      icon={visibleWindows.inspector ? 'tick' : 'blank'}
-                      text="Inspector"
-                      onClick={() => toggleWindow('inspector')}
-                    />
-                    <MenuItem
-                      icon={visibleWindows.timeline ? 'tick' : 'blank'}
-                      text="Timeline"
-                      onClick={() => toggleWindow('timeline')}
-                    />
-                    <MenuDivider />
-                    <MenuItem
-                      icon="reset"
-                      text="Reset Layout"
-                      onClick={resetLayout}
-                    />
-                  </Menu>
-                }
-                placement="bottom-end"
-              >
+              <div ref={viewsMenuRef} className="relative">
                 <Button
-                  small
+                  size="small"
                   icon="panel-stats"
                   rightIcon="caret-down"
                   variant="minimal"
                   text="Views"
+                  active={isViewsMenuOpen}
+                  onClick={() => setIsViewsMenuOpen((open) => !open)}
                 />
-              </Popover>
-
-              <Button
-                small
-                icon="cross"
-                variant="minimal"
-                onClick={closeViewerTree}
-                text="Exit scan tree"
-              />
+                {isViewsMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded border border-[#333333] bg-[#252526] shadow-xl">
+                    <Menu className="bg-transparent!">
+                      <MenuItem
+                        icon={visibleWindows.toolbar ? 'tick' : 'blank'}
+                        text="View Modes Bar"
+                        onClick={() => toggleWindow('toolbar')}
+                      />
+                      <MenuItem
+                        icon={visibleWindows.viewport ? 'tick' : 'blank'}
+                        text="Scene Viewport"
+                        onClick={() => toggleWindow('viewport')}
+                      />
+                      <MenuItem
+                        icon={visibleWindows.inspector ? 'tick' : 'blank'}
+                        text="Inspector"
+                        onClick={() => toggleWindow('inspector')}
+                      />
+                      <MenuItem
+                        icon={visibleWindows.timeline ? 'tick' : 'blank'}
+                        text="Timeline"
+                        onClick={() => toggleWindow('timeline')}
+                      />
+                      <MenuDivider />
+                      <MenuItem
+                        icon="reset"
+                        text="Reset Layout"
+                        onClick={() => {
+                          resetLayout()
+                          setIsViewsMenuOpen(false)
+                        }}
+                      />
+                    </Menu>
+                  </div>
+                )}
+              </div>
             </div>
-          ) : undefined
-        }
-      />
+          </div>
+        )}
 
       {!viewerTreeId && (
         <div className="flex-1 flex items-center justify-center bg-[#111111] text-sm text-gray-400">
@@ -606,6 +641,8 @@ export default function ViewerView({ active }: { active: boolean }) {
               minimal={activeViewModeTab !== 'mesh'}
               intent={activeViewModeTab === 'mesh' ? Intent.PRIMARY : Intent.NONE}
               icon="cube"
+              disabled={!isPointCloudReady}
+              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
               onClick={() => handleSelectViewMode('mesh')}
             >
               3D Triangle Mesh
@@ -617,6 +654,8 @@ export default function ViewerView({ active }: { active: boolean }) {
                 activeViewModeTab === 'stations' ? Intent.PRIMARY : Intent.NONE
               }
               icon="camera"
+              disabled={!isPointCloudReady}
+              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
               onClick={() => handleSelectViewMode('stations')}
             >
               360° Panorama
@@ -628,6 +667,8 @@ export default function ViewerView({ active }: { active: boolean }) {
                 activeViewModeTab === 'raster' ? Intent.PRIMARY : Intent.NONE
               }
               icon="map"
+              disabled={!isPointCloudReady}
+              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
               onClick={() => handleSelectViewMode('raster')}
             >
               2D Height & Contours
@@ -639,6 +680,8 @@ export default function ViewerView({ active }: { active: boolean }) {
                 activeViewModeTab === 'splat' ? Intent.PRIMARY : Intent.NONE
               }
               icon="cloud"
+              disabled={!isPointCloudReady}
+              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
               onClick={() => handleSelectViewMode('splat')}
             >
               3D Gaussian Splatting
@@ -650,6 +693,8 @@ export default function ViewerView({ active }: { active: boolean }) {
                 activeViewModeTab === 'sections' ? Intent.PRIMARY : Intent.NONE
               }
               icon="layers"
+              disabled={!isPointCloudReady}
+              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
               onClick={() => handleSelectViewMode('sections')}
             >
               2D Slices & Floor Plans
@@ -661,6 +706,8 @@ export default function ViewerView({ active }: { active: boolean }) {
                 activeViewModeTab === 'unwrapped' ? Intent.PRIMARY : Intent.NONE
               }
               icon="media"
+              disabled={!isPointCloudReady}
+              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
               onClick={() => handleSelectViewMode('unwrapped')}
             >
               Depth / Intensity 2D
@@ -670,6 +717,8 @@ export default function ViewerView({ active }: { active: boolean }) {
               minimal={activeViewModeTab !== 'xml'}
               intent={activeViewModeTab === 'xml' ? Intent.PRIMARY : Intent.NONE}
               icon="code"
+              disabled={!isPointCloudReady}
+              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
               onClick={() => handleSelectViewMode('xml')}
             >
               XML / Metadata
@@ -2509,16 +2558,6 @@ export default function ViewerView({ active }: { active: boolean }) {
           title="Drag to resize Timeline"
           className="h-1.5 shrink-0 cursor-row-resize bg-[#222222] hover:bg-blue-500/70 transition-colors"
         />
-        <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#242424] text-[11px] font-semibold text-gray-300 flex items-center justify-between shrink-0">
-          <span>Timeline</span>
-          <Button
-            small
-            minimal
-            icon="cross"
-            title="Hide Timeline"
-            onClick={() => toggleWindow('timeline')}
-          />
-        </div>
         <div className="flex-1 min-h-0 overflow-y-auto">
           <ScanTimeline />
         </div>
