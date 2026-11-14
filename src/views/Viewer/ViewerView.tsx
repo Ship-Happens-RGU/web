@@ -31,7 +31,21 @@ import { useScanSession } from '@/composables/useScanSession'
 import { openScanInViewer } from '@/services/scanLoader'
 import { formatBytes, formatDate } from '@/utils/format'
 import ScanTimeline from './Components/ScanTimeline'
+import GaussianSplatOverlay from './Components/GaussianSplatOverlay'
+import UnwrappedScanOverlay from './Components/UnwrappedScanOverlay'
+import E57XmlTreeOverlay from './Components/E57XmlTreeOverlay'
 import '@/packages/viewer/src/style.css'
+
+type ViewMode =
+  | 'points'
+  | 'mesh'
+  | 'stations'
+  | 'raster'
+  | 'fit'
+  | 'splat'
+  | 'sections'
+  | 'unwrapped'
+  | 'xml'
 
 let viewerMainLoaded = false
 
@@ -53,6 +67,10 @@ export default function ViewerView({ active }: { active: boolean }) {
   const [isIcpRunning, setIsIcpRunning] = useState(false)
   const [isBlinking, setIsBlinking] = useState(false)
   const blinkTimerRef = useRef<number | null>(null)
+  const [activeViewModeTab, setActiveViewModeTab] = useState<ViewMode | null>(
+    null,
+  )
+  const [isTabPanelOpen, setIsTabPanelOpen] = useState(false)
 
   const baseScan = useMemo(() => {
     return scans.find((s) => s.id === selectedScanId) ?? (scans.length > 0 ? scans[scans.length - 1] : null)
@@ -173,10 +191,79 @@ export default function ViewerView({ active }: { active: boolean }) {
   }, [])
 
   useEffect(() => {
+    setActiveViewModeTab(null)
+    setIsTabPanelOpen(false)
     if (isComparing) {
       handleExitCompare()
     }
   }, [selectedScanId, viewerTreeId, handleExitCompare])
+
+  const handleSelectViewMode = useCallback(
+    (mode: ViewMode) => {
+      const viewer = (window as unknown as { __viewer?: any }).__viewer
+      const app = (window as unknown as { __app?: any }).__app
+
+      if (activeViewModeTab === mode) {
+        if (mode !== 'points' && mode !== 'xml') {
+          setIsTabPanelOpen((open) => !open)
+        }
+        return
+      }
+
+      setActiveViewModeTab(mode)
+
+      if (mode === 'points') {
+        setIsTabPanelOpen(false)
+        viewer?.exitBubble?.()
+        app?.setDisplay?.('points')
+        viewer?.fit?.()
+        return
+      }
+
+      if (mode === 'xml') {
+        setIsTabPanelOpen(false)
+        viewer?.exitBubble?.()
+        return
+      }
+
+      setIsTabPanelOpen(true)
+
+      if (mode === 'mesh') {
+        viewer?.exitBubble?.()
+        const hasMesh =
+          (app?.meshEntities?.()?.length ?? 0) > 0 ||
+          (app?.meshData?.idx?.length ?? 0) > 0
+        if (hasMesh) {
+          app?.setDisplay?.('mesh')
+        }
+        return
+      }
+
+      if (mode === 'stations') {
+        void app?.openPanorama?.(0)
+        return
+      }
+
+      if (mode === 'raster') {
+        viewer?.exitBubble?.()
+        viewer?.topDown?.()
+        if (!app?.raster) {
+          void app?.rasterize?.()
+        }
+        return
+      }
+
+      if (mode === 'sections') {
+        viewer?.exitBubble?.()
+        return
+      }
+
+      if (mode === 'splat' || mode === 'unwrapped' || mode === 'fit') {
+        viewer?.exitBubble?.()
+      }
+    },
+    [activeViewModeTab],
+  )
 
   const handleCompareButtonClick = () => {
     if (isComparing) {
@@ -409,8 +496,835 @@ export default function ViewerView({ active }: { active: boolean }) {
           </NavbarGroup>
         </Navbar>
 
-        {isComparing && (
-          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 flex flex-wrap items-center gap-3 bg-[#1e1e1e]/95 backdrop-blur-md px-4 py-2 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
+        {activeViewModeTab === null && (
+          <div className="absolute inset-0 top-12 z-[8] flex flex-col items-center justify-center bg-[#111111] text-center px-6">
+            <div className="max-w-xl rounded-xl border border-[#2a2a2a] bg-[#181818]/90 px-6 py-6 shadow-2xl">
+              <p className="text-sm font-medium text-gray-200 mb-1">
+                Select a view mode to inspect this scan
+              </p>
+              <p className="text-xs text-gray-400 mb-4">
+                Choose a representation from the top bar or start below.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  small
+                  intent={Intent.PRIMARY}
+                  icon="scatter-plot"
+                  onClick={() => handleSelectViewMode('points')}
+                >
+                  3D Point Cloud
+                </Button>
+                <Button
+                  small
+                  icon="cube"
+                  onClick={() => handleSelectViewMode('mesh')}
+                >
+                  3D Triangle Mesh
+                </Button>
+                <Button
+                  small
+                  icon="camera"
+                  onClick={() => handleSelectViewMode('stations')}
+                >
+                  360° Panorama
+                </Button>
+                <Button
+                  small
+                  icon="map"
+                  onClick={() => handleSelectViewMode('raster')}
+                >
+                  2D Height & Contours
+                </Button>
+                <Button
+                  small
+                  icon="shapes"
+                  onClick={() => handleSelectViewMode('fit')}
+                >
+                  Fitted Primitives
+                </Button>
+                <Button
+                  small
+                  icon="cloud"
+                  onClick={() => handleSelectViewMode('splat')}
+                >
+                  3D Gaussian Splatting
+                </Button>
+                <Button
+                  small
+                  icon="layers"
+                  onClick={() => handleSelectViewMode('sections')}
+                >
+                  2D Slices & Floor Plans
+                </Button>
+                <Button
+                  small
+                  icon="media"
+                  onClick={() => handleSelectViewMode('unwrapped')}
+                >
+                  Depth / Intensity 2D
+                </Button>
+                <Button
+                  small
+                  icon="code"
+                  onClick={() => handleSelectViewMode('xml')}
+                >
+                  XML / Metadata Tree
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeViewModeTab === 'splat' && (
+          <GaussianSplatOverlay
+            isPanelOpen={isTabPanelOpen}
+            onClosePanel={() => setIsTabPanelOpen(false)}
+          />
+        )}
+
+        {activeViewModeTab === 'unwrapped' && (
+          <UnwrappedScanOverlay
+            isPanelOpen={isTabPanelOpen}
+            onClosePanel={() => setIsTabPanelOpen(false)}
+          />
+        )}
+
+        {activeViewModeTab === 'xml' && <E57XmlTreeOverlay />}
+
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none max-w-[95vw]">
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1 bg-[#1e1e1e]/95 backdrop-blur-md px-2 py-1.5 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
+            <Button
+              small
+              minimal={activeViewModeTab !== 'points'}
+              intent={
+                activeViewModeTab === 'points' ? Intent.PRIMARY : Intent.NONE
+              }
+              icon="scatter-plot"
+              onClick={() => handleSelectViewMode('points')}
+            >
+              3D Point Cloud
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'mesh'}
+              intent={activeViewModeTab === 'mesh' ? Intent.PRIMARY : Intent.NONE}
+              icon="cube"
+              onClick={() => handleSelectViewMode('mesh')}
+            >
+              3D Triangle Mesh
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'stations'}
+              intent={
+                activeViewModeTab === 'stations' ? Intent.PRIMARY : Intent.NONE
+              }
+              icon="camera"
+              onClick={() => handleSelectViewMode('stations')}
+            >
+              360° Panorama
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'raster'}
+              intent={
+                activeViewModeTab === 'raster' ? Intent.PRIMARY : Intent.NONE
+              }
+              icon="map"
+              onClick={() => handleSelectViewMode('raster')}
+            >
+              2D Height & Contours
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'fit'}
+              intent={activeViewModeTab === 'fit' ? Intent.PRIMARY : Intent.NONE}
+              icon="shapes"
+              onClick={() => handleSelectViewMode('fit')}
+            >
+              Fitted Primitives
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'splat'}
+              intent={
+                activeViewModeTab === 'splat' ? Intent.PRIMARY : Intent.NONE
+              }
+              icon="cloud"
+              onClick={() => handleSelectViewMode('splat')}
+            >
+              3D Gaussian Splatting
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'sections'}
+              intent={
+                activeViewModeTab === 'sections' ? Intent.PRIMARY : Intent.NONE
+              }
+              icon="layers"
+              onClick={() => handleSelectViewMode('sections')}
+            >
+              2D Slices & Floor Plans
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'unwrapped'}
+              intent={
+                activeViewModeTab === 'unwrapped' ? Intent.PRIMARY : Intent.NONE
+              }
+              icon="media"
+              onClick={() => handleSelectViewMode('unwrapped')}
+            >
+              Depth / Intensity 2D
+            </Button>
+            <Button
+              small
+              minimal={activeViewModeTab !== 'xml'}
+              intent={activeViewModeTab === 'xml' ? Intent.PRIMARY : Intent.NONE}
+              icon="code"
+              onClick={() => handleSelectViewMode('xml')}
+            >
+              XML / Metadata
+            </Button>
+          </div>
+
+          <div
+            className={`pointer-events-auto w-80 max-h-[calc(100vh-10rem)] overflow-y-auto bg-[#1e1e1e]/95 backdrop-blur-md p-3 rounded-lg border border-[#333333] shadow-2xl text-xs text-white ${
+              isTabPanelOpen &&
+              activeViewModeTab &&
+              activeViewModeTab !== 'points' &&
+              activeViewModeTab !== 'splat' &&
+              activeViewModeTab !== 'unwrapped' &&
+              activeViewModeTab !== 'xml'
+                ? ''
+                : 'hidden'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-[#333333]">
+              <span className="font-semibold text-gray-200">
+                {activeViewModeTab === 'mesh' &&
+                  '3D Triangle Mesh (Surface Reconstruction)'}
+                {activeViewModeTab === 'stations' &&
+                  '360° Panorama / Station Views'}
+                {activeViewModeTab === 'raster' &&
+                  '2D Elevation / Height Maps & Contours'}
+                {activeViewModeTab === 'fit' && 'Fitted Geometric Primitives'}
+                {activeViewModeTab === 'sections' &&
+                  '2D Cross-Sections, Slices & Floor Plans'}
+              </span>
+              <Button
+                small
+                minimal
+                icon="cross"
+                title="Close panel"
+                onClick={() => setIsTabPanelOpen(false)}
+              />
+            </div>
+
+            <div
+              className={`grp ${activeViewModeTab === 'sections' ? '' : 'hidden'}`}
+              data-grp="sections"
+            >
+              <Button
+                id="k-secadd"
+                intent={Intent.PRIMARY}
+                fill
+                size="small"
+                className="mb-1.5"
+              >
+                Add section at orbit point
+              </Button>
+
+              <ButtonGroup fill className="mb-2">
+                <Button
+                  size="small"
+                  icon="compass"
+                  onClick={() => {
+                    const viewer = (window as unknown as { __viewer?: any }).__viewer
+                    viewer?.topDown?.()
+                  }}
+                >
+                  Top-down plan
+                </Button>
+                <Button
+                  size="small"
+                  icon="camera"
+                  onClick={() => {
+                    const viewer = (window as unknown as { __viewer?: any }).__viewer
+                    const url = viewer?.snapshot?.(2048, 'png')
+                    if (url) {
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = 'cross-section.png'
+                      a.click()
+                    }
+                  }}
+                >
+                  Save slice PNG…
+                </Button>
+              </ButtonGroup>
+
+              <ul id="sec-list" className="mlist" />
+
+              <p className="statusline" id="v-sections">
+                —
+              </p>
+
+              <details className="sub">
+                <summary>How this works</summary>
+                <p className="hint">
+                  Bounding shapes, combined as a union: keep only what lies inside any of them, or mark one <b>Remove</b> to drop what is inside it. A section is a slab you move, tilt and thicken with the gizmo — floors, a wall, a corridor.
+                </p>
+              </details>
+            </div>
+
+            <div
+              className={`grp ${activeViewModeTab === 'mesh' ? '' : 'hidden'}`}
+              data-grp="mesh"
+            >
+              <label className="row">
+                <span>Detail</span>
+                <input
+                  type="range"
+                  id="k-mvox"
+                  min="0.5"
+                  max="60"
+                  step="0.5"
+                  defaultValue="6"
+                />
+                <b className="mono" id="v-mvox">
+                  6 cm
+                </b>
+              </label>
+
+              <label className="row">
+                <span>Smoothing</span>
+                <input
+                  type="range"
+                  id="k-msmooth"
+                  min="0"
+                  max="6"
+                  step="1"
+                  defaultValue="2"
+                />
+                <b className="mono" id="v-msmooth">
+                  2
+                </b>
+              </label>
+
+              <label className="row">
+                <span>Fill gaps</span>
+                <input
+                  type="range"
+                  id="k-mtrunc"
+                  min="1"
+                  max="4"
+                  step="0.5"
+                  defaultValue="2"
+                />
+                <b className="mono" id="v-mtrunc">
+                  2.0
+                </b>
+              </label>
+
+              <Button
+                id="k-mbuild"
+                intent={Intent.PRIMARY}
+                fill
+                size="small"
+                className="mb-1.5"
+              >
+                Build from points…
+              </Button>
+
+              <p className="statusline" id="v-mesh">
+                —
+              </p>
+
+              <p className="lab mono">SHOW</p>
+
+              <ButtonGroup fill className="mb-2">
+                <Button id="k-disppoints" size="small" className="on">
+                  Points
+                </Button>
+
+                <Button id="k-dispmesh" size="small">
+                  Mesh
+                </Button>
+
+                <Button id="k-dispboth" size="small">
+                  Both
+                </Button>
+              </ButtonGroup>
+
+              <Switch
+                id="k-mflat"
+                label="Flat shading"
+                alignIndicator={Alignment.END}
+                className="row flex! w-full items-center justify-between"
+              />
+
+              <p className="lab mono mesh-have">EDIT</p>
+
+              <ButtonGroup fill className="mb-2 mesh-have">
+                <Button id="k-meshflip" size="small">
+                  Flip
+                </Button>
+
+                <Button id="k-meshsmooth" size="small">
+                  Smooth
+                </Button>
+
+                <Button id="k-meshdecim" size="small">
+                  Decimate
+                </Button>
+              </ButtonGroup>
+
+              <label className="row mesh-have">
+                <span>Smooth passes</span>
+                <input
+                  type="range"
+                  id="k-meshiter"
+                  min="1"
+                  max="20"
+                  step="1"
+                  defaultValue="5"
+                />
+                <b className="mono" id="v-meshiter">
+                  5
+                </b>
+              </label>
+
+              <Switch
+                id="k-meshtaubin"
+                label="Keep volume"
+                alignIndicator={Alignment.END}
+                defaultChecked
+                className="row mesh-have w-full items-center justify-between"
+              />
+
+              <label className="row mesh-have">
+                <span>Decimate to</span>
+                <input
+                  type="range"
+                  id="k-meshcell"
+                  min="0.5"
+                  max="100"
+                  step="0.5"
+                  defaultValue="10"
+                />
+                <b className="mono" id="v-meshcell">
+                  10 cm
+                </b>
+              </label>
+
+              <p className="lab mono mesh-have">MEASURE</p>
+
+              <Button
+                id="k-meshmeasure"
+                fill
+                size="small"
+                className="mb-1.5 mesh-have"
+              >
+                Area and volume
+              </Button>
+
+              <p className="lab mono mesh-have">COMPARE</p>
+
+              <label className="row mesh-have">
+                <span>Distance to</span>
+                <HTMLSelect id="k-meshref" />
+              </label>
+
+              <Switch
+                id="k-meshsigned"
+                label="Signed"
+                alignIndicator={Alignment.END}
+                className="row mesh-have w-full items-center justify-between"
+              />
+
+              <Button
+                id="k-meshdist"
+                fill
+                size="small"
+                className="mb-1.5 mesh-have"
+              >
+                Distance from this cloud
+              </Button>
+
+              <p className="lab mono mesh-have">SAMPLE</p>
+
+              <label className="row mesh-have">
+                <span>Sample</span>
+                <HTMLSelect id="k-meshsmode" defaultValue="count">
+                  <option value="count">points in all</option>
+                  <option value="density">points per m²</option>
+                </HTMLSelect>
+              </label>
+
+              <label className="row mesh-have">
+                <span>How many</span>
+                <input
+                  type="number"
+                  id="k-meshsval"
+                  min="100"
+                  step="1000"
+                  defaultValue="200000"
+                />
+              </label>
+
+              <Button
+                id="k-meshsample"
+                fill
+                size="small"
+                className="mb-1.5 mesh-have"
+              >
+                Sample to a new layer
+              </Button>
+
+              <label className="row mesh-have">
+                <span>Format</span>
+                <HTMLSelect id="k-meshfmt" defaultValue="ply">
+                  <option value="ply">PLY (binary)</option>
+                  <option value="obj">OBJ</option>
+                  <option value="stl">STL (binary)</option>
+                </HTMLSelect>
+              </label>
+
+              <Button
+                id="k-meshsave"
+                intent={Intent.PRIMARY}
+                fill
+                size="small"
+                className="mb-1.5 mesh-have"
+              >
+                Export mesh…
+              </Button>
+
+              <Button id="k-mclear" fill size="small" className="mb-1.5 mesh-have">
+                Discard mesh
+              </Button>
+
+              <p className="statusline" id="v-meshinfo">
+                no mesh yet
+              </p>
+
+              <Button id="k-meshopen" fill size="small" className="mb-1.5">
+                Import a mesh…
+              </Button>
+
+              <p className="hint">
+                Opens a PLY, OBJ or STL as a layer of its own, to compare against or edit.
+              </p>
+
+              <details className="sub">
+                <summary>How this works</summary>
+                <p className="hint">
+                  <b>Build from points</b> is surface reconstruction: it needs normals, and writes a triangle mesh as a separate object that you can show, hide, measure or export. <b>Detail</b> is the voxel size, so smaller is finer and slower, and below the scan&apos;s own point spacing it only adds noise. <b>Fill gaps</b> widens the band each point writes, closing small holes at the cost of rounding sharp edges.
+                </p>
+                <p className="hint">
+                  <b>Area</b> and <b>volume</b> are measured through the layer&apos;s transform. A volume only means anything when the mesh is closed, so the boundary edge count is reported next to it. <b>Smooth</b> is Taubin with Keep volume on and plain Laplacian with it off. <b>Decimate</b> is vertex clustering at the cell you set, which is fast but cannot hit an exact triangle count.
+                </p>
+                <p className="hint">
+                  <b>Distance from this cloud</b> measures every point of the active point layer to the nearest triangle of the mesh layer you pick, and writes it as a scalar field.
+                </p>
+              </details>
+            </div>
+
+            <div
+              className={`grp ${activeViewModeTab === 'stations' ? '' : 'hidden'}`}
+              data-grp="stations"
+            >
+              <Switch
+                id="k-stations"
+                label="Show stations"
+                alignIndicator={Alignment.END}
+                defaultChecked
+                className="row flex! w-full items-center justify-between"
+              />
+
+              <p className="statusline" id="v-stations">
+                —
+              </p>
+
+              <div id="bubble-ui" className="hidden">
+                <label className="row">
+                  <span>Points over photo</span>
+                  <input
+                    type="range"
+                    id="k-blend"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    defaultValue="0.35"
+                  />
+                  <b className="mono" id="v-blend">
+                    0.35
+                  </b>
+                </label>
+
+                <Button id="k-bubble-exit" fill size="small" className="mb-1.5">
+                  Leave photo
+                </Button>
+              </div>
+
+              <p className="hint">
+                Click a station marker to look around its 360° photo. Walk away and it fades.
+              </p>
+            </div>
+
+            <div
+              className={`grp ${activeViewModeTab === 'raster' ? '' : 'hidden'}`}
+              data-grp="raster"
+            >
+              <label className="row">
+                <span>Cell size</span>
+                <input
+                  type="range"
+                  id="k-rcell"
+                  min="0.01"
+                  max="2"
+                  step="0.01"
+                  defaultValue="0.25"
+                />
+                <b className="mono" id="v-rcell">
+                  0.25 m
+                </b>
+              </label>
+
+              <label className="row">
+                <span>Value</span>
+                <HTMLSelect id="k-rstat" defaultValue="max">
+                  <option value="max">Highest point</option>
+                  <option value="min">Lowest point</option>
+                  <option value="mean">Mean height</option>
+                  <option value="density">Points per cell</option>
+                  <option value="field">Mean scalar field</option>
+                </HTMLSelect>
+              </label>
+
+              <label className="row">
+                <span>Along</span>
+                <HTMLSelect id="k-raxis" defaultValue="z">
+                  <option value="z">Z (a height model)</option>
+                  <option value="x">X</option>
+                  <option value="y">Y</option>
+                </HTMLSelect>
+              </label>
+
+              <label className="row">
+                <span>Fill empty cells</span>
+                <HTMLSelect id="k-rfill" defaultValue="none">
+                  <option value="none">Leave empty</option>
+                  <option value="nearest">Nearest</option>
+                  <option value="idw">Inverse distance</option>
+                </HTMLSelect>
+              </label>
+
+              <Button
+                id="k-rasterize"
+                intent={Intent.PRIMARY}
+                fill
+                size="small"
+                className="mb-1.5"
+              >
+                Rasterize
+              </Button>
+
+              <p className="statusline" id="v-raster">
+                —
+              </p>
+
+              <Switch
+                id="k-rshow"
+                label="Show the draped grid"
+                alignIndicator={Alignment.END}
+                defaultChecked
+                className="row raster-have w-full items-center justify-between"
+              />
+
+              <Button
+                id="k-rsavepng"
+                fill
+                size="small"
+                className="mb-1.5 raster-have"
+              >
+                Save PNG + world file…
+              </Button>
+
+              <p className="lab mono">CONTOURS</p>
+
+              <label className="row">
+                <span>Interval</span>
+                <input
+                  type="range"
+                  id="k-cint"
+                  min="0.05"
+                  max="5"
+                  step="0.05"
+                  defaultValue="0.5"
+                />
+                <b className="mono" id="v-cint">
+                  0.50 m
+                </b>
+              </label>
+
+              <Button id="k-contours" fill size="small" className="mb-1.5">
+                Draw contours
+              </Button>
+
+              <ButtonGroup fill className="mb-2 contour-have">
+                <Button id="k-cdxf" size="small">
+                  Save DXF…
+                </Button>
+
+                <Button id="k-cgeojson" size="small">
+                  Save GeoJSON…
+                </Button>
+              </ButtonGroup>
+
+              <p className="statusline" id="v-contours">
+                —
+              </p>
+
+              <p className="lab mono">VOLUME</p>
+
+              <label className="row">
+                <span>Against</span>
+                <HTMLSelect id="k-vref" />
+              </label>
+
+              <label className="row">
+                <span>Plane height</span>
+                <input type="number" id="k-vplane" step="0.1" defaultValue="0" />
+              </label>
+
+              <Button id="k-volume" fill size="small" className="mb-1.5">
+                Measure the volume
+              </Button>
+
+              <p className="statusline" id="v-volume">
+                —
+              </p>
+
+              <details className="sub">
+                <summary>How this works</summary>
+                <p className="hint">
+                  A 2.5D volume: the difference between two height rasters over the same cells, one cell area at a time. Cut and fill are reported separately because their sum hides both.
+                </p>
+              </details>
+            </div>
+
+            <div
+              className={`grp ${activeViewModeTab === 'fit' ? '' : 'hidden'}`}
+              data-grp="fit"
+            >
+              <ButtonGroup fill className="mb-2">
+                <Button id="k-fitplane" size="small">
+                  Plane
+                </Button>
+
+                <Button id="k-fitsphere" size="small">
+                  Sphere
+                </Button>
+              </ButtonGroup>
+
+              <ButtonGroup fill className="mb-2">
+                <Button id="k-fitcyl" size="small">
+                  Cylinder
+                </Button>
+
+                <Button id="k-fitcircle" size="small">
+                  Circle
+                </Button>
+              </ButtonGroup>
+
+              <p className="statusline" id="v-fit">
+                —
+              </p>
+
+              <Button id="k-fitclear" fill size="small" className="mb-1.5">
+                Clear the drawn shape
+              </Button>
+
+              <p className="lab mono">DETECT</p>
+
+              <label className="row">
+                <span title="How far a point may be from a shape and still count as part of it.">
+                  Tolerance
+                </span>
+                <input
+                  type="range"
+                  id="k-dettol"
+                  min="0.002"
+                  max="0.2"
+                  step="0.002"
+                  defaultValue="0.02"
+                />
+                <b className="mono" id="v-dettol">
+                  0.02 m
+                </b>
+              </label>
+
+              <label className="row">
+                <span>Min points</span>
+                <input
+                  type="range"
+                  id="k-detmin"
+                  min="100"
+                  max="20000"
+                  step="100"
+                  defaultValue="2000"
+                />
+                <b className="mono" id="v-detmin">
+                  2,000
+                </b>
+              </label>
+
+              <label className="row">
+                <span>Look for</span>
+                <HTMLSelect id="k-detkinds" defaultValue="plane,sphere,cylinder">
+                  <option value="plane">Planes</option>
+                  <option value="plane,cylinder">Planes and cylinders</option>
+                  <option value="plane,sphere,cylinder">
+                    Planes, spheres, cylinders
+                  </option>
+                </HTMLSelect>
+              </label>
+
+              <Button
+                id="k-detect"
+                intent={Intent.PRIMARY}
+                fill
+                size="small"
+                className="mb-1.5"
+              >
+                Detect shapes…
+              </Button>
+
+              <ul id="det-list" className="mlist" />
+
+              <ButtonGroup fill className="mb-2 det-have">
+                <Button id="k-detkeep" size="small">
+                  Keep only inliers
+                </Button>
+
+                <Button id="k-detremove" size="small">
+                  Remove inliers
+                </Button>
+              </ButtonGroup>
+
+              <details className="sub">
+                <summary>How this works</summary>
+                <p className="hint">
+                  Fits a primitive to the <b>active region&apos;s contents</b>, or to the whole layer when no region is active. The RMS is the number that says whether to believe it.
+                </p>
+              </details>
+            </div>
+          </div>
+
+          {isComparing && (
+            <div className="pointer-events-auto flex flex-wrap items-center gap-3 bg-[#1e1e1e]/95 backdrop-blur-md px-4 py-2 rounded-lg border border-[#333333] shadow-2xl text-xs text-white">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_6px_#34d399]" />
               <span className="font-semibold text-gray-300">Base:</span>
@@ -501,7 +1415,8 @@ export default function ViewerView({ active }: { active: boolean }) {
               {alignmentStatus}
             </span>
           </div>
-        )}
+          )}
+        </div>
 
         <div id="drop" className="bg-[#111111]!">
           <div className="flex flex-col items-center justify-center">
@@ -1189,27 +2104,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </details>
           </div>
 
-          <div className="grp" data-grp="sections">
-            <H3>Sections</H3>
-
-            <Button id="k-secadd" fill size="small" className="mb-1.5">
-              Add section at orbit point
-            </Button>
-
-            <ul id="sec-list" className="mlist" />
-
-            <p className="statusline" id="v-sections">
-              —
-            </p>
-
-            <details className="sub">
-              <summary>How this works</summary>
-              <p className="hint">
-                Bounding shapes, combined as a union: keep only what lies inside any of them, or mark one <b>Remove</b> to drop what is inside it. A section is a slab you move, tilt and thicken with the gizmo — floors, a wall, a corridor. A drawn region (<b>S</b>) is an outline extruded along the direction you drew it from, so you can orbit around it and see exactly what it holds.
-              </p>
-            </details>
-          </div>
-
           <div className="grp" data-grp="clean">
             <H3>Clean</H3>
 
@@ -1615,253 +2509,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </details>
           </div>
 
-          <div className="grp" data-grp="raster">
-            <H3>Raster</H3>
-
-            <label className="row">
-              <span>Cell size</span>
-              <input
-                type="range"
-                id="k-rcell"
-                min="0.01"
-                max="2"
-                step="0.01"
-                defaultValue="0.25"
-              />
-              <b className="mono" id="v-rcell">
-                0.25 m
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Value</span>
-              <HTMLSelect id="k-rstat" defaultValue="max">
-                <option value="max">Highest point</option>
-                <option value="min">Lowest point</option>
-                <option value="mean">Mean height</option>
-                <option value="density">Points per cell</option>
-                <option value="field">Mean scalar field</option>
-              </HTMLSelect>
-            </label>
-
-            <label className="row">
-              <span>Along</span>
-              <HTMLSelect id="k-raxis" defaultValue="z">
-                <option value="z">Z (a height model)</option>
-                <option value="x">X</option>
-                <option value="y">Y</option>
-              </HTMLSelect>
-            </label>
-
-            <label className="row">
-              <span>Fill empty cells</span>
-              <HTMLSelect id="k-rfill" defaultValue="none">
-                <option value="none">Leave empty</option>
-                <option value="nearest">Nearest</option>
-                <option value="idw">Inverse distance</option>
-              </HTMLSelect>
-            </label>
-
-            <Button
-              id="k-rasterize"
-              intent={Intent.PRIMARY}
-              fill
-              size="small"
-              className="mb-1.5"
-            >
-              Rasterize
-            </Button>
-
-            <p className="statusline" id="v-raster">
-              —
-            </p>
-
-            <Switch
-              id="k-rshow"
-              label="Show the draped grid"
-              alignIndicator={Alignment.END}
-              defaultChecked
-              className="row raster-have w-full items-center justify-between"
-            />
-
-            <Button
-              id="k-rsavepng"
-              fill
-              size="small"
-              className="mb-1.5 raster-have"
-            >
-              Save PNG + world file…
-            </Button>
-
-            <p className="lab mono">CONTOURS</p>
-
-            <label className="row">
-              <span>Interval</span>
-              <input
-                type="range"
-                id="k-cint"
-                min="0.05"
-                max="5"
-                step="0.05"
-                defaultValue="0.5"
-              />
-              <b className="mono" id="v-cint">
-                0.50 m
-              </b>
-            </label>
-
-            <Button id="k-contours" fill size="small" className="mb-1.5">
-              Draw contours
-            </Button>
-
-            <ButtonGroup fill className="mb-2 contour-have">
-              <Button id="k-cdxf" size="small">
-                Save DXF…
-              </Button>
-
-              <Button id="k-cgeojson" size="small">
-                Save GeoJSON…
-              </Button>
-            </ButtonGroup>
-
-            <p className="statusline" id="v-contours">
-              —
-            </p>
-
-            <p className="lab mono">VOLUME</p>
-
-            <label className="row">
-              <span>Against</span>
-              <HTMLSelect id="k-vref" />
-            </label>
-
-            <label className="row">
-              <span>Plane height</span>
-              <input type="number" id="k-vplane" step="0.1" defaultValue="0" />
-            </label>
-
-            <Button id="k-volume" fill size="small" className="mb-1.5">
-              Measure the volume
-            </Button>
-
-            <p className="statusline" id="v-volume">
-              —
-            </p>
-
-            <details className="sub">
-              <summary>How this works</summary>
-              <p className="hint">
-                A 2.5D volume: the difference between two height rasters over the same cells, one cell area at a time. Cut and fill are reported separately because their sum hides both.
-              </p>
-            </details>
-          </div>
-
-          <div className="grp" data-grp="fit">
-            <H3>Fit</H3>
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-fitplane" size="small">
-                Plane
-              </Button>
-
-              <Button id="k-fitsphere" size="small">
-                Sphere
-              </Button>
-            </ButtonGroup>
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-fitcyl" size="small">
-                Cylinder
-              </Button>
-
-              <Button id="k-fitcircle" size="small">
-                Circle
-              </Button>
-            </ButtonGroup>
-
-            <p className="statusline" id="v-fit">
-              —
-            </p>
-
-            <Button id="k-fitclear" fill size="small" className="mb-1.5">
-              Clear the drawn shape
-            </Button>
-
-            <p className="lab mono">DETECT</p>
-
-            <label className="row">
-              <span title="How far a point may be from a shape and still count as part of it.">
-                Tolerance
-              </span>
-              <input
-                type="range"
-                id="k-dettol"
-                min="0.002"
-                max="0.2"
-                step="0.002"
-                defaultValue="0.02"
-              />
-              <b className="mono" id="v-dettol">
-                0.02 m
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Min points</span>
-              <input
-                type="range"
-                id="k-detmin"
-                min="100"
-                max="20000"
-                step="100"
-                defaultValue="2000"
-              />
-              <b className="mono" id="v-detmin">
-                2,000
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Look for</span>
-              <HTMLSelect id="k-detkinds" defaultValue="plane,sphere,cylinder">
-                <option value="plane">Planes</option>
-                <option value="plane,cylinder">Planes and cylinders</option>
-                <option value="plane,sphere,cylinder">
-                  Planes, spheres, cylinders
-                </option>
-              </HTMLSelect>
-            </label>
-
-            <Button
-              id="k-detect"
-              intent={Intent.PRIMARY}
-              fill
-              size="small"
-              className="mb-1.5"
-            >
-              Detect shapes…
-            </Button>
-
-            <ul id="det-list" className="mlist" />
-
-            <ButtonGroup fill className="mb-2 det-have">
-              <Button id="k-detkeep" size="small">
-                Keep only inliers
-              </Button>
-
-              <Button id="k-detremove" size="small">
-                Remove inliers
-              </Button>
-            </ButtonGroup>
-
-            <details className="sub">
-              <summary>How this works</summary>
-              <p className="hint">
-                Fits a primitive to the <b>active region&apos;s contents</b>, or to the whole layer when no region is active. The RMS is the number that says whether to believe it.
-              </p>
-            </details>
-          </div>
-
           <div className="grp sf-have" data-grp="field">
             <H3>Scalar field</H3>
 
@@ -1971,258 +2618,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </details>
           </div>
 
-          <div className="grp" data-grp="mesh">
-            <H3>Mesh</H3>
-
-            <label className="row">
-              <span>Detail</span>
-              <input
-                type="range"
-                id="k-mvox"
-                min="0.5"
-                max="60"
-                step="0.5"
-                defaultValue="6"
-              />
-              <b className="mono" id="v-mvox">
-                6 cm
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Smoothing</span>
-              <input
-                type="range"
-                id="k-msmooth"
-                min="0"
-                max="6"
-                step="1"
-                defaultValue="2"
-              />
-              <b className="mono" id="v-msmooth">
-                2
-              </b>
-            </label>
-
-            <label className="row">
-              <span>Fill gaps</span>
-              <input
-                type="range"
-                id="k-mtrunc"
-                min="1"
-                max="4"
-                step="0.5"
-                defaultValue="2"
-              />
-              <b className="mono" id="v-mtrunc">
-                2.0
-              </b>
-            </label>
-
-            <Button
-              id="k-mbuild"
-              intent={Intent.PRIMARY}
-              fill
-              size="small"
-              className="mb-1.5"
-            >
-              Build from points…
-            </Button>
-
-            <p className="statusline" id="v-mesh">
-              —
-            </p>
-
-            <p className="lab mono">SHOW</p>
-
-            <ButtonGroup fill className="mb-2">
-              <Button id="k-disppoints" size="small" className="on">
-                Points
-              </Button>
-
-              <Button id="k-dispmesh" size="small">
-                Mesh
-              </Button>
-
-              <Button id="k-dispboth" size="small">
-                Both
-              </Button>
-            </ButtonGroup>
-
-            <Switch
-              id="k-mflat"
-              label="Flat shading"
-              alignIndicator={Alignment.END}
-              className="row flex! w-full items-center justify-between"
-            />
-
-            <p className="lab mono mesh-have">EDIT</p>
-
-            <ButtonGroup fill className="mb-2 mesh-have">
-              <Button id="k-meshflip" size="small">
-                Flip
-              </Button>
-
-              <Button id="k-meshsmooth" size="small">
-                Smooth
-              </Button>
-
-              <Button id="k-meshdecim" size="small">
-                Decimate
-              </Button>
-            </ButtonGroup>
-
-            <label className="row mesh-have">
-              <span>Smooth passes</span>
-              <input
-                type="range"
-                id="k-meshiter"
-                min="1"
-                max="20"
-                step="1"
-                defaultValue="5"
-              />
-              <b className="mono" id="v-meshiter">
-                5
-              </b>
-            </label>
-
-            <Switch
-              id="k-meshtaubin"
-              label="Keep volume"
-              alignIndicator={Alignment.END}
-              defaultChecked
-              className="row mesh-have w-full items-center justify-between"
-            />
-
-            <label className="row mesh-have">
-              <span>Decimate to</span>
-              <input
-                type="range"
-                id="k-meshcell"
-                min="0.5"
-                max="100"
-                step="0.5"
-                defaultValue="10"
-              />
-              <b className="mono" id="v-meshcell">
-                10 cm
-              </b>
-            </label>
-
-            <p className="lab mono mesh-have">MEASURE</p>
-
-            <Button
-              id="k-meshmeasure"
-              fill
-              size="small"
-              className="mb-1.5 mesh-have"
-            >
-              Area and volume
-            </Button>
-
-            <p className="lab mono mesh-have">COMPARE</p>
-
-            <label className="row mesh-have">
-              <span>Distance to</span>
-              <HTMLSelect id="k-meshref" />
-            </label>
-
-            <Switch
-              id="k-meshsigned"
-              label="Signed"
-              alignIndicator={Alignment.END}
-              className="row mesh-have w-full items-center justify-between"
-            />
-
-            <Button
-              id="k-meshdist"
-              fill
-              size="small"
-              className="mb-1.5 mesh-have"
-            >
-              Distance from this cloud
-            </Button>
-
-            <p className="lab mono mesh-have">SAMPLE</p>
-
-            <label className="row mesh-have">
-              <span>Sample</span>
-              <HTMLSelect id="k-meshsmode" defaultValue="count">
-                <option value="count">points in all</option>
-                <option value="density">points per m²</option>
-              </HTMLSelect>
-            </label>
-
-            <label className="row mesh-have">
-              <span>How many</span>
-              <input
-                type="number"
-                id="k-meshsval"
-                min="100"
-                step="1000"
-                defaultValue="200000"
-              />
-            </label>
-
-            <Button
-              id="k-meshsample"
-              fill
-              size="small"
-              className="mb-1.5 mesh-have"
-            >
-              Sample to a new layer
-            </Button>
-
-            <label className="row mesh-have">
-              <span>Format</span>
-              <HTMLSelect id="k-meshfmt" defaultValue="ply">
-                <option value="ply">PLY (binary)</option>
-                <option value="obj">OBJ</option>
-                <option value="stl">STL (binary)</option>
-              </HTMLSelect>
-            </label>
-
-            <Button
-              id="k-meshsave"
-              intent={Intent.PRIMARY}
-              fill
-              size="small"
-              className="mb-1.5 mesh-have"
-            >
-              Export mesh…
-            </Button>
-
-            <Button id="k-mclear" fill size="small" className="mb-1.5 mesh-have">
-              Discard mesh
-            </Button>
-
-            <p className="statusline" id="v-meshinfo">
-              no mesh yet
-            </p>
-
-            <Button id="k-meshopen" fill size="small" className="mb-1.5">
-              Import a mesh…
-            </Button>
-
-            <p className="hint">
-              Opens a PLY, OBJ or STL as a layer of its own, to compare against or edit.
-            </p>
-
-            <details className="sub">
-              <summary>How this works</summary>
-              <p className="hint">
-                <b>Build from points</b> is surface reconstruction: it needs normals, and writes a triangle mesh as a separate object that you can show, hide, measure or export. <b>Detail</b> is the voxel size, so smaller is finer and slower, and below the scan&apos;s own point spacing it only adds noise. <b>Fill gaps</b> widens the band each point writes, closing small holes at the cost of rounding sharp edges.
-              </p>
-              <p className="hint">
-                <b>Area</b> and <b>volume</b> are measured through the layer&apos;s transform. A volume only means anything when the mesh is closed, so the boundary edge count is reported next to it. <b>Smooth</b> is Taubin with Keep volume on and plain Laplacian with it off. <b>Decimate</b> is vertex clustering at the cell you set, which is fast but cannot hit an exact triangle count.
-              </p>
-              <p className="hint">
-                <b>Distance from this cloud</b> measures every point of the active point layer to the nearest triangle of the mesh layer you pick, and writes it as a scalar field.
-              </p>
-            </details>
-          </div>
-
           <div className="grp" data-grp="measure">
             <H3>Measure</H3>
 
@@ -2286,47 +2681,6 @@ export default function ViewerView({ active }: { active: boolean }) {
                 Writes what is in memory — the crop, if you applied one. The original file is never touched.
               </p>
             </details>
-          </div>
-
-          <div className="grp" data-grp="stations">
-            <H3>Stations</H3>
-
-            <Switch
-              id="k-stations"
-              label="Show stations"
-              alignIndicator={Alignment.END}
-              defaultChecked
-              className="row flex! w-full items-center justify-between"
-            />
-
-            <p className="statusline" id="v-stations">
-              —
-            </p>
-
-            <div id="bubble-ui" className="hidden">
-              <label className="row">
-                <span>Points over photo</span>
-                <input
-                  type="range"
-                  id="k-blend"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  defaultValue="0.35"
-                />
-                <b className="mono" id="v-blend">
-                  0.35
-                </b>
-              </label>
-
-              <Button id="k-bubble-exit" fill size="small" className="mb-1.5">
-                Leave photo
-              </Button>
-            </div>
-
-            <p className="hint">
-              Click a station marker to look around its 360° photo. Walk away and it fades.
-            </p>
           </div>
 
           <div className="grp" data-grp="cache">
