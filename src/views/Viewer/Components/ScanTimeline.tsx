@@ -296,41 +296,22 @@ export default function ScanTimeline() {
                   data-scan-id={scan.id}
                   onClick={() => selectScan(scan.id)}
                   style={{ width: `${clipWidth}px` }}
-                  className={`group relative flex h-12 shrink-0 cursor-pointer flex-col justify-center gap-0.5 rounded border px-2.5 py-1 transition-all ${
+                  className={`group relative flex h-10 shrink-0 cursor-pointer items-center justify-between gap-2 rounded border px-2.5 transition-all ${
                     isSelected
                       ? 'border-[#30aedb] bg-[#1a2d38] shadow-[0_0_10px_rgba(48,174,219,0.28)] ring-1 ring-[#30aedb]'
                       : 'border-white/10 bg-[#1c1c1c] hover:border-white/30 hover:bg-[#232323]'
                   }`}
                 >
-                  {/* Clip Header: Scan Name + Status/Format */}
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span
-                      className={`truncate text-[11px] font-medium ${
-                        isSelected ? 'text-white' : 'text-white/85 group-hover:text-white'
-                      }`}
-                      title={scan.name}
-                    >
-                      {scan.name}
-                    </span>
+                  <span
+                    className={`truncate text-[11px] font-medium ${
+                      isSelected ? 'text-[#30aedb]' : 'text-white/85 group-hover:text-white'
+                    }`}
+                  >
+                    {formatDate(scan.scanDate)}
+                  </span>
 
-                    {isLoading ? (
-                      <Spinner size={10} intent={Intent.PRIMARY} className="shrink-0" />
-                    ) : (
-                      <span
-                        className={`shrink-0 font-mono text-[9px] uppercase ${
-                          isSelected ? 'text-[#30aedb]' : 'text-white/40'
-                        }`}
-                      >
-                        {scan.fileName.split('.').pop() ?? 'SCAN'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Clip Footer: Date & File size */}
-                  <div className="flex items-center justify-between text-[10px] text-white/50">
-                    <span className={isSelected ? 'text-[#30aedb]/90 font-medium' : ''}>
-                      {formatDate(scan.scanDate)}
-                    </span>
+                  <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-white/55">
+                    {isLoading && <Spinner size={10} intent={Intent.PRIMARY} />}
                     <span>{formatBytes(scan.fileSize)}</span>
                   </div>
 
