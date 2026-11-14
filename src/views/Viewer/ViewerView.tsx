@@ -19,9 +19,6 @@ import {
   Menu,
   MenuDivider,
   MenuItem,
-  Navbar,
-  NavbarDivider,
-  NavbarGroup,
   Popover,
   ProgressBar,
   Slider,
@@ -470,13 +467,63 @@ export default function ViewerView({ active }: { active: boolean }) {
         }
         actions={
           viewerTreeId ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-gray-300 pr-2 border-r border-[#333333]">
+                <Text className="font-medium max-w-[160px] truncate" id="tb-name">
+                  —
+                </Text>
+                <Tag id="tb-layer" minimal className="hidden" />
+                <span className="text-gray-600">·</span>
+                <Text className="mono text-[11px] text-gray-400" id="tb-points">
+                  —
+                </Text>
+                <span className="text-gray-600">·</span>
+                <Text className="mono text-[11px] text-gray-400" id="tb-fps">
+                  —
+                </Text>
+                <Tag id="tb-tool" intent={Intent.PRIMARY} minimal className="hidden" />
+              </div>
+
+              <div className="flex items-center gap-1 pr-2 border-r border-[#333333]">
+                <Button id="tb-undo" size="small" variant="minimal" disabled title="Undo (⌘Z)">
+                  Undo
+                </Button>
+                <Button id="tb-redo" size="small" variant="minimal" disabled title="Redo (⇧⌘Z)">
+                  Redo
+                </Button>
+                <Button id="tb-save" size="small" variant="minimal" disabled title="Save as… (⌘S)">
+                  Save as…
+                </Button>
+                <Button
+                  id="tb-compare"
+                  size="small"
+                  icon="comparison"
+                  variant={isComparing ? 'solid' : 'minimal'}
+                  intent={isComparing ? Intent.PRIMARY : Intent.NONE}
+                  title={isComparing ? 'Exit scan comparison' : 'Compare two scans in this scan tree'}
+                  onClick={handleCompareButtonClick}
+                >
+                  {isComparing ? 'Exit compare' : 'Compare'}
+                </Button>
+                <Button
+                  id="tb-close"
+                  size="small"
+                  intent={Intent.DANGER}
+                  variant="minimal"
+                  icon="cross"
+                  title="Close scan"
+                  onClick={handleExitCompare}
+                >
+                  Close scan
+                </Button>
+              </div>
+
               <Popover
                 content={
                   <Menu>
                     <MenuItem
                       icon={visibleWindows.toolbar ? 'tick' : 'blank'}
-                      text="Toolbar & Modes"
+                      text="View Modes Bar"
                       onClick={() => toggleWindow('toolbar')}
                     />
                     <MenuItem
@@ -541,88 +588,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             !visibleWindows.toolbar ? 'hidden' : ''
           }`}
         >
-          <Navbar
-            id="topbar"
-            className="static! w-full! bg-[#1e1e1e]! border-b! border-[#2a2a2a]! shadow-none! px-3!"
-          >
-          <NavbarGroup align={Alignment.START} className="flex items-center gap-2.5">
-            <Text className="name" id="tb-name">
-              —
-            </Text>
-
-            <Tag id="tb-layer" minimal className="hidden" />
-
-            <NavbarDivider />
-
-            <Text className="mono" id="tb-points">
-              —
-            </Text>
-
-            <NavbarDivider />
-
-            <Text className="mono" id="tb-fps">
-              —
-            </Text>
-          </NavbarGroup>
-
-          <span className="spacer" />
-
-          <NavbarGroup align={Alignment.END} className="flex items-center gap-2">
-            <Tag id="tb-tool" intent={Intent.PRIMARY} className="hidden" />
-
-            <Button id="tb-undo" size="small" disabled title="Undo (⌘Z)">
-              Undo
-            </Button>
-
-            <Button id="tb-redo" size="small" disabled title="Redo (⇧⌘Z)">
-              Redo
-            </Button>
-
-            <Button id="tb-save" size="small" disabled title="Save as… (⌘S)">
-              Save as…
-            </Button>
-
-            <Button
-              id="tb-open"
-              size="small"
-              icon="document-open"
-              title="Open another scan (⌘O)"
-            >
-              View from file
-            </Button>
-
-            <Button
-              id="tb-panel"
-              size="small"
-              icon="panel-stats"
-              title="Toggle panel (Tab)"
-            >
-              Controls
-            </Button>
-
-            <Button
-              id="tb-compare"
-              size="small"
-              icon="comparison"
-              intent={isComparing ? Intent.PRIMARY : Intent.NONE}
-              title={isComparing ? 'Exit scan comparison' : 'Compare two scans in this scan tree'}
-              onClick={handleCompareButtonClick}
-            >
-              {isComparing ? 'Exit compare' : 'Compare'}
-            </Button>
-
-            <Button
-              id="tb-close"
-              size="small"
-              intent={Intent.DANGER}
-              icon="cross"
-              title="Close scan"
-              onClick={handleExitCompare}
-            >
-              Close scan
-            </Button>
-          </NavbarGroup>
-        </Navbar>
 
           <div className="flex flex-wrap items-center justify-center gap-1 px-3 py-1.5 bg-[#191919] text-xs text-white">
             <Button
