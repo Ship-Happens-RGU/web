@@ -463,23 +463,46 @@ export default function ViewerView({ active }: { active: boolean }) {
   }
 
   useEffect(() => {
-    if (!viewerMainLoaded) {
-      viewerMainLoaded = true
+    let cancelled = false
+    let ro: ResizeObserver | null = null
 
-      void import('@/packages/viewer/src/main').then(() => {
-        const v = (window as unknown as { __viewer?: { resize: () => void } }).__viewer
-        v?.resize()
-      })
-    } else {
-      const v = (window as unknown as { __viewer?: { canvas?: HTMLCanvasElement; resize: () => void } }).__viewer
+    const attachAndResize = () => {
+      if (cancelled) return
+      const v = (
+        window as unknown as {
+          __viewer?: { canvas?: HTMLCanvasElement; resize: () => void }
+        }
+      ).__viewer
       const host = viewportRef.current
       if (v?.canvas && host) {
-        const placeholder = host.querySelector('#gl')
-        if (placeholder && placeholder !== v.canvas) {
-          placeholder.replaceWith(v.canvas)
-          v.resize()
+        if (v.canvas.parentElement !== host) {
+          const placeholder = host.querySelector('#gl')
+          if (placeholder && placeholder !== v.canvas) {
+            placeholder.replaceWith(v.canvas)
+          } else if (!placeholder) {
+            host.prepend(v.canvas)
+          }
         }
+        v.resize()
+        if (typeof ResizeObserver !== 'undefined') {
+          ro = new ResizeObserver(() => v.resize())
+          ro.observe(host)
+        }
+      } else {
+        v?.resize()
       }
+    }
+
+    if (!viewerMainLoaded) {
+      viewerMainLoaded = true
+      void import('@/packages/viewer/src/main').then(attachAndResize)
+    } else {
+      attachAndResize()
+    }
+
+    return () => {
+      cancelled = true
+      ro?.disconnect()
     }
   }, [])
 
