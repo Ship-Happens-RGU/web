@@ -41,7 +41,6 @@ type ViewMode =
   | 'mesh'
   | 'stations'
   | 'raster'
-  | 'fit'
   | 'splat'
   | 'sections'
   | 'unwrapped'
@@ -256,7 +255,7 @@ export default function ViewerView({ active }: { active: boolean }) {
         return
       }
 
-      if (mode === 'splat' || mode === 'unwrapped' || mode === 'fit') {
+      if (mode === 'splat' || mode === 'unwrapped') {
         viewer?.exitBubble?.()
       }
     },
@@ -556,15 +555,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </Button>
             <Button
               small
-              minimal={activeViewModeTab !== 'fit'}
-              intent={activeViewModeTab === 'fit' ? Intent.PRIMARY : Intent.NONE}
-              icon="shapes"
-              onClick={() => handleSelectViewMode('fit')}
-            >
-              Fitted Primitives
-            </Button>
-            <Button
-              small
               minimal={activeViewModeTab !== 'splat'}
               intent={
                 activeViewModeTab === 'splat' ? Intent.PRIMARY : Intent.NONE
@@ -627,7 +617,6 @@ export default function ViewerView({ active }: { active: boolean }) {
                   '360° Panorama / Station Views'}
                 {activeViewModeTab === 'raster' &&
                   '2D Elevation / Height Maps & Contours'}
-                {activeViewModeTab === 'fit' && 'Fitted Geometric Primitives'}
                 {activeViewModeTab === 'sections' &&
                   '2D Cross-Sections, Slices & Floor Plans'}
               </span>
@@ -1135,7 +1124,7 @@ export default function ViewerView({ active }: { active: boolean }) {
             </div>
 
             <div
-              className={`grp ${activeViewModeTab === 'fit' ? '' : 'hidden'}`}
+              className="grp hidden"
               data-grp="fit"
             >
               <ButtonGroup fill className="mb-2">
