@@ -8,7 +8,6 @@ import {
   InputGroup,
   Intent,
   NonIdealState,
-  Spinner,
   Tag,
 } from '@blueprintjs/core'
 import PageHeader from '@/components/PageHeader'
@@ -159,12 +158,21 @@ export default function Dashboard() {
                   <span>Total Scans</span>
                   <Icon icon="scatter-plot" size={14} className="text-[#30aedb]" />
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-white/90">
-                  {totalScanCount}
-                </div>
-                <div className="mt-1 text-[11px] text-white/45">
-                  Across {trees.length} scan {trees.length === 1 ? 'tree' : 'trees'}
-                </div>
+                {isLoadingScans && allScans.length === 0 ? (
+                  <>
+                    <div className={`mt-2 h-8 w-16 rounded ${Classes.SKELETON}`} />
+                    <div className={`mt-1.5 h-3.5 w-28 rounded ${Classes.SKELETON}`} />
+                  </>
+                ) : (
+                  <>
+                    <div className="mt-2 text-2xl font-semibold text-white/90">
+                      {totalScanCount}
+                    </div>
+                    <div className="mt-1 text-[11px] text-white/45">
+                      Across {trees.length} scan {trees.length === 1 ? 'tree' : 'trees'}
+                    </div>
+                  </>
+                )}
               </Card>
 
               <Card elevation={1} className="bg-[#1c1c1c]! p-4!">
@@ -172,12 +180,21 @@ export default function Dashboard() {
                   <span>Scan Trees</span>
                   <Icon icon="folder-close" size={14} className="text-[#30aedb]" />
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-white/90">
-                  {trees.length}
-                </div>
-                <div className="mt-1 text-[11px] text-white/45">
-                  Asset collections
-                </div>
+                {treesQuery.isPending ? (
+                  <>
+                    <div className={`mt-2 h-8 w-14 rounded ${Classes.SKELETON}`} />
+                    <div className={`mt-1.5 h-3.5 w-24 rounded ${Classes.SKELETON}`} />
+                  </>
+                ) : (
+                  <>
+                    <div className="mt-2 text-2xl font-semibold text-white/90">
+                      {trees.length}
+                    </div>
+                    <div className="mt-1 text-[11px] text-white/45">
+                      Asset collections
+                    </div>
+                  </>
+                )}
               </Card>
 
               <Card elevation={1} className="bg-[#1c1c1c]! p-4!">
@@ -185,14 +202,23 @@ export default function Dashboard() {
                   <span>Recently Viewed</span>
                   <Icon icon="history" size={14} className="text-[#30aedb]" />
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-white/90">
-                  {resolvedRecentScans.length}
-                </div>
-                <div className="mt-1 truncate text-[11px] text-white/45">
-                  {resolvedRecentScans[0]
-                    ? `Last: ${resolvedRecentScans[0].scan.name}`
-                    : 'No scans viewed yet'}
-                </div>
+                {isLoadingScans && recentScans.length > 0 && resolvedRecentScans.length === 0 ? (
+                  <>
+                    <div className={`mt-2 h-8 w-14 rounded ${Classes.SKELETON}`} />
+                    <div className={`mt-1.5 h-3.5 w-32 rounded ${Classes.SKELETON}`} />
+                  </>
+                ) : (
+                  <>
+                    <div className="mt-2 text-2xl font-semibold text-white/90">
+                      {resolvedRecentScans.length}
+                    </div>
+                    <div className="mt-1 truncate text-[11px] text-white/45">
+                      {resolvedRecentScans[0]
+                        ? `Last: ${resolvedRecentScans[0].scan.name}`
+                        : 'No scans viewed yet'}
+                    </div>
+                  </>
+                )}
               </Card>
 
               <Card elevation={1} className="bg-[#1c1c1c]! p-4!">
@@ -200,12 +226,21 @@ export default function Dashboard() {
                   <span>Total Storage</span>
                   <Icon icon="database" size={14} className="text-[#30aedb]" />
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-white/90">
-                  {formatBytes(totalStorageBytes)}
-                </div>
-                <div className="mt-1 text-[11px] text-white/45">
-                  Point cloud &amp; scan data
-                </div>
+                {isLoadingScans && allScans.length === 0 ? (
+                  <>
+                    <div className={`mt-2 h-8 w-24 rounded ${Classes.SKELETON}`} />
+                    <div className={`mt-1.5 h-3.5 w-32 rounded ${Classes.SKELETON}`} />
+                  </>
+                ) : (
+                  <>
+                    <div className="mt-2 text-2xl font-semibold text-white/90">
+                      {formatBytes(totalStorageBytes)}
+                    </div>
+                    <div className="mt-1 text-[11px] text-white/45">
+                      Point cloud &amp; scan data
+                    </div>
+                  </>
+                )}
               </Card>
             </div>
 
@@ -220,7 +255,25 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {resolvedRecentScans.length === 0 ? (
+              {isLoadingScans && recentScans.length > 0 && resolvedRecentScans.length === 0 ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <Card key={i} elevation={1} className="flex flex-col gap-3 bg-[#1c1c1c]! p-4!">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className={`h-4 w-3/4 rounded ${Classes.SKELETON}`} />
+                          <div className={`h-3 w-1/2 rounded ${Classes.SKELETON}`} />
+                        </div>
+                        <div className={`h-4 w-10 rounded ${Classes.SKELETON}`} />
+                      </div>
+                      <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                        <div className={`h-3 w-24 rounded ${Classes.SKELETON}`} />
+                        <div className={`h-3 w-14 rounded ${Classes.SKELETON}`} />
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : resolvedRecentScans.length === 0 ? (
                 <Card elevation={1} className="bg-[#1c1c1c]! p-4! text-xs text-white/55">
                   You haven&apos;t viewed any scans yet. Select a scan below to open it in the 3D viewer.
                 </Card>
@@ -291,9 +344,25 @@ export default function Dashboard() {
               </div>
 
               {isLoadingScans && allScans.length === 0 ? (
-                <div className="flex items-center justify-center py-12">
-                  <Spinner intent={Intent.PRIMARY} />
-                </div>
+                <Card elevation={1} className="overflow-hidden bg-[#1c1c1c]! p-0!">
+                  <div className="divide-y divide-white/5">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-center justify-between gap-4 px-4 py-3">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <div className={`h-4 w-4 shrink-0 rounded ${Classes.SKELETON}`} />
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className={`h-4 w-44 rounded ${Classes.SKELETON}`} />
+                              <div className={`h-4 w-20 rounded ${Classes.SKELETON}`} />
+                            </div>
+                            <div className={`h-3 w-64 rounded ${Classes.SKELETON}`} />
+                          </div>
+                        </div>
+                        <div className={`h-6 w-14 shrink-0 rounded ${Classes.SKELETON}`} />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
               ) : treesQuery.error ? (
                 <NonIdealState
                   icon="error"
