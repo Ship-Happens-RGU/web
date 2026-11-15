@@ -40,7 +40,6 @@ type ViewMode =
   | 'stations'
   | 'raster'
   | 'splat'
-  | 'sections'
   | 'unwrapped'
 
 let viewerMainLoaded = false
@@ -335,11 +334,6 @@ export default function ViewerView({ active }: { active: boolean }) {
         if (!app?.raster) {
           void app?.rasterize?.()
         }
-        return
-      }
-
-      if (mode === 'sections') {
-        viewer?.exitBubble?.()
         return
       }
 
@@ -711,19 +705,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </Button>
             <Button
               small
-              minimal={activeViewModeTab !== 'sections'}
-              intent={
-                activeViewModeTab === 'sections' ? Intent.PRIMARY : Intent.NONE
-              }
-              icon="layers"
-              disabled={!isPointCloudReady}
-              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
-              onClick={() => handleSelectViewMode('sections')}
-            >
-              2D Slices & Floor Plans
-            </Button>
-            <Button
-              small
               minimal={activeViewModeTab !== 'unwrapped'}
               intent={
                 activeViewModeTab === 'unwrapped' ? Intent.PRIMARY : Intent.NONE
@@ -779,66 +760,7 @@ export default function ViewerView({ active }: { active: boolean }) {
                       '360° Panorama / Station Views'}
                     {activeViewModeTab === 'raster' &&
                       '2D Elevation / Height Maps & Contours'}
-                    {activeViewModeTab === 'sections' &&
-                      '2D Cross-Sections, Slices & Floor Plans'}
                   </div>
-
-            <div
-              className={`grp ${activeViewModeTab === 'sections' ? '' : 'hidden'}`}
-              data-grp="sections"
-            >
-              <Button
-                id="k-secadd"
-                intent={Intent.PRIMARY}
-                fill
-                size="small"
-                className="mb-1.5"
-              >
-                Add section at orbit point
-              </Button>
-
-              <ButtonGroup fill className="mb-2">
-                <Button
-                  size="small"
-                  icon="compass"
-                  onClick={() => {
-                    const viewer = (window as unknown as { __viewer?: any }).__viewer
-                    viewer?.topDown?.()
-                  }}
-                >
-                  Top-down plan
-                </Button>
-                <Button
-                  size="small"
-                  icon="camera"
-                  onClick={() => {
-                    const viewer = (window as unknown as { __viewer?: any }).__viewer
-                    const url = viewer?.snapshot?.(2048, 'png')
-                    if (url) {
-                      const a = document.createElement('a')
-                      a.href = url
-                      a.download = 'cross-section.png'
-                      a.click()
-                    }
-                  }}
-                >
-                  Save slice PNG…
-                </Button>
-              </ButtonGroup>
-
-              <ul id="sec-list" className="mlist" />
-
-              <p className="statusline" id="v-sections">
-                —
-              </p>
-
-              <details className="sub">
-                <summary>How this works</summary>
-                <p className="hint">
-                  Bounding shapes, combined as a union: keep only what lies inside any of them, or mark one <b>Remove</b> to drop what is inside it. A section is a slab you move, tilt and thicken with the gizmo — floors, a wall, a corridor.
-                </p>
-              </details>
-            </div>
 
             <div
               className={`grp ${activeViewModeTab === 'stations' ? '' : 'hidden'}`}
