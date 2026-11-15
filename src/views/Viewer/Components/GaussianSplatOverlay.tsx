@@ -2,13 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as THREE from 'three'
 import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d'
-import { Button, HTMLSelect, Intent, Spinner } from '@blueprintjs/core'
+import { Button, Card, HTMLSelect, Intent, Text } from '@blueprintjs/core'
 
-function buildSplatBufferFromViewer(maxSplats: number, splatRadius: number): {
+async function buildSplatBufferFromViewer(
+  maxSplats: number,
+  splatRadius: number,
+  onProgress?: (fraction: number) => void,
+): Promise<{
   buffer: ArrayBuffer
   count: number
   center: [number, number, number]
-} | null {
+} | null> {
   const viewer = (window as unknown as { __viewer?: any }).__viewer
   const cells = viewer?.active?.cells
   if (!cells || !cells.leaves?.length) return null
@@ -89,6 +93,11 @@ function buildSplatBufferFromViewer(maxSplats: number, splatRadius: number): {
 
       idx++
     }
+
+    if (onProgress && (li % 8 === 0 || li === leaves.length - 1)) {
+      onProgress((li + 1) / leaves.length)
+      await new Promise((r) => setTimeout(r, 0))
+    }
   }
 
   const center: [number, number, number] = [
@@ -114,6 +123,7 @@ export default function GaussianSplatOverlay({
   const [splatCount, setSplatCount] = useState(0)
   const [status, setStatus] = useState('Converting point cloud to 3D Gaussian Splats…')
   const [isLoading, setIsLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   const disposeViewer = useCallback(() => {
@@ -158,10 +168,16 @@ export default function GaussianSplatOverlay({
           integerBasedSort: false,
         })
         splatViewerRef.current = viewer
+        setStatus('Building Gaussian Splat scene…')
+        setProgress(0.65)
         await viewer.addSplatScene(url, {
           format,
           showLoadingUI: false,
+          onProgress: (pct: number) => {
+            setProgress(0.65 + Math.min(1, Math.max(0, pct / 100)) * 0.35)
+          },
         })
+        setProgress(1)
         viewer.start()
         setStatus(countLabel)
       } catch (err) {
@@ -176,10 +192,13 @@ export default function GaussianSplatOverlay({
 
   const generateFromScan = useCallback(async () => {
     setIsLoading(true)
+    setProgress(0.05)
     setError(null)
     setStatus('Sampling scan points into Gaussian Splats…')
     await new Promise((r) => setTimeout(r, 20))
-    const built = buildSplatBufferFromViewer(maxSplats, splatRadius)
+    const built = await buildSplatBufferFromViewer(maxSplats, splatRadius, (f) => {
+      setProgress(0.05 + f * 0.55)
+    })
     if (!built) {
       setIsLoading(false)
       setError('No loaded point cloud found. Open an .e57 scan first.')
@@ -301,11 +320,14 @@ export default function GaussianSplatOverlay({
       <div ref={containerRef} className="w-full h-full" />
 
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 pointer-events-none">
-          <div className="flex items-center gap-2.5 bg-[#1e1e1e] border border-[#333333] px-4 py-2.5 rounded-lg text-xs text-white shadow-xl">
-            <Spinner size={16} />
-            <span>{status}</span>
-          </div>
+        <div className="absolute inset-0 z-30 grid place-items-center bg-[#111111]/72 backdrop-blur-[4px]">
+          <Card elevation={4} className="card w-[min(380px,86vw)]!">
+            <Text>{status}</Text>
+
+            <div className="bar">
+              <i style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+          </Card>
         </div>
       )}
 

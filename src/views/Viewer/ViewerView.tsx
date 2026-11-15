@@ -488,7 +488,7 @@ export default function ViewerView({ active }: { active: boolean }) {
             size: v.knobs.size || 2.5,
             bright: v.knobs.bright || 1,
             gamma: v.knobs.gamma || 1,
-            flySpeed: v.knobs.flySpeed || 2,
+            flySpeed: v.knobs.flySpeed || 12,
           })
         }
       }
@@ -2336,10 +2336,10 @@ export default function ViewerView({ active }: { active: boolean }) {
                 min="0.1"
                 max="30"
                 step="0.1"
-                defaultValue="2"
+                defaultValue="12"
               />
               <b className="mono" id="v-flyspeed">
-                2.0
+                12.0
               </b>
             </label>
 
