@@ -117,6 +117,7 @@ export default function GaussianSplatOverlay({
   const splatViewerRef = useRef<any>(null)
   const lastBlobUrlRef = useRef<string | null>(null)
   const lastBufferRef = useRef<ArrayBuffer | null>(null)
+  const runIdRef = useRef(0)
 
   const [maxSplats, setMaxSplats] = useState(150000)
   const [splatRadius, setSplatRadius] = useState(0.03)
@@ -144,83 +145,144 @@ export default function GaussianSplatOverlay({
     }
   }, [])
 
+  const createViewerInstance = useCallback((center: [number, number, number]) => {
+    const viewer = new GaussianSplats3D.Viewer({
+      rootElement: containerRef.current!,
+      cameraUp: [0, 0, 1],
+      initialCameraPosition: [center[0] + 8, center[1] - 8, center[2] + 5],
+      initialCameraLookAt: center,
+      selfDrivenMode: true,
+      useBuiltInControls: true,
+      sharedMemoryForWorkers: false,
+      gpuAcceleratedSort: false,
+      integerBasedSort: false,
+    })
+    splatViewerRef.current = viewer
+    return viewer
+  }, [])
+
   const loadSplatUrl = useCallback(
     async (
       url: string,
       format: number,
       center: [number, number, number],
       countLabel: string,
+      runId: number,
     ) => {
-      if (!containerRef.current) return
+      if (!containerRef.current || runIdRef.current !== runId) return
       disposeViewer()
+      lastBlobUrlRef.current = url
       setIsLoading(true)
       setError(null)
       try {
-        const viewer = new GaussianSplats3D.Viewer({
-          rootElement: containerRef.current,
-          cameraUp: [0, 0, 1],
-          initialCameraPosition: [center[0] + 8, center[1] - 8, center[2] + 5],
-          initialCameraLookAt: center,
-          selfDrivenMode: true,
-          useBuiltInControls: true,
-          sharedMemoryForWorkers: false,
-          gpuAcceleratedSort: false,
-          integerBasedSort: false,
-        })
-        splatViewerRef.current = viewer
+        const viewer = createViewerInstance(center)
         setStatus('Building Gaussian Splat scene…')
         setProgress(0.65)
-        await viewer.addSplatScene(url, {
+        const sceneTask = viewer.addSplatScene(url, {
           format,
           showLoadingUI: false,
           onProgress: (pct: number) => {
-            setProgress(0.65 + Math.min(1, Math.max(0, pct / 100)) * 0.35)
+            if (runIdRef.current === runId) {
+              setProgress(0.65 + Math.min(1, Math.max(0, pct / 100)) * 0.35)
+            }
           },
         })
+        await ((sceneTask as any)?.promise ?? sceneTask)
+        if (runIdRef.current !== runId) return
         setProgress(1)
         viewer.start()
         setStatus(countLabel)
       } catch (err) {
+        if (runIdRef.current !== runId) return
         setError((err as Error)?.message || 'Failed to render Gaussian Splats')
         setStatus('Error rendering splats')
       } finally {
-        setIsLoading(false)
+        if (runIdRef.current === runId) {
+          setIsLoading(false)
+        }
       }
     },
-    [disposeViewer],
+    [disposeViewer, createViewerInstance],
   )
 
   const generateFromScan = useCallback(async () => {
+    const runId = ++runIdRef.current
+    disposeViewer()
     setIsLoading(true)
     setProgress(0.05)
     setError(null)
     setStatus('Sampling scan points into Gaussian Splats…')
     await new Promise((r) => setTimeout(r, 20))
+    if (runIdRef.current !== runId) return
+
     const built = await buildSplatBufferFromViewer(maxSplats, splatRadius, (f) => {
-      setProgress(0.05 + f * 0.55)
+      if (runIdRef.current === runId) {
+        setProgress(0.05 + f * 0.55)
+      }
     })
+    if (runIdRef.current !== runId) return
+
     if (!built) {
       setIsLoading(false)
       setError('No loaded point cloud found. Open an .e57 scan first.')
       setStatus('No scan loaded')
       return
     }
+    if (!containerRef.current) {
+      setIsLoading(false)
+      return
+    }
+
     lastBufferRef.current = built.buffer
     setSplatCount(built.count)
-    const blob = new Blob([built.buffer], { type: 'application/octet-stream' })
-    const url = URL.createObjectURL(blob)
-    lastBlobUrlRef.current = url
-    await loadSplatUrl(
-      url,
-      GaussianSplats3D.SceneFormat.Splat,
-      built.center,
-      `${built.count.toLocaleString()} Gaussian splats (radius ${splatRadius} m)`,
-    )
-  }, [maxSplats, splatRadius, loadSplatUrl])
+
+    try {
+      setStatus('Building Gaussian Splat scene…')
+      setProgress(0.65)
+      await new Promise((r) => setTimeout(r, 16))
+      if (runIdRef.current !== runId || !containerRef.current) return
+
+      const splatBuffer = await (GaussianSplats3D as any).SplatLoader.loadFromFileData(
+        built.buffer,
+        1,
+        0,
+        false,
+      )
+      if (runIdRef.current !== runId || !containerRef.current) return
+
+      setProgress(0.85)
+      const viewer = createViewerInstance(built.center)
+      await (viewer as any).addSplatBuffers(
+        [splatBuffer],
+        [{ splatAlphaRemovalThreshold: 1 }],
+        true,
+        false,
+        false,
+        false,
+        true,
+      )
+      if (runIdRef.current !== runId) return
+
+      setProgress(1)
+      viewer.start()
+      setStatus(
+        `${built.count.toLocaleString()} Gaussian splats (radius ${splatRadius} m)`,
+      )
+    } catch (err) {
+      if (runIdRef.current !== runId) return
+      setError((err as Error)?.message || 'Failed to render Gaussian Splats')
+      setStatus('Error rendering splats')
+    } finally {
+      if (runIdRef.current === runId) {
+        setIsLoading(false)
+      }
+    }
+  }, [maxSplats, splatRadius, disposeViewer, createViewerInstance])
 
   useEffect(() => {
     void generateFromScan()
     return () => {
+      runIdRef.current++
       disposeViewer()
     }
   }, [generateFromScan, disposeViewer])
@@ -228,6 +290,7 @@ export default function GaussianSplatOverlay({
   const handleLoadExternalFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const runId = ++runIdRef.current
     const lower = file.name.toLowerCase()
     const format = lower.endsWith('.ply')
       ? GaussianSplats3D.SceneFormat.Ply
@@ -236,8 +299,7 @@ export default function GaussianSplatOverlay({
         : GaussianSplats3D.SceneFormat.Splat
     const url = URL.createObjectURL(file)
     lastBufferRef.current = null
-    await loadSplatUrl(url, format, [0, 0, 0], `Loaded ${file.name}`)
-    lastBlobUrlRef.current = url
+    await loadSplatUrl(url, format, [0, 0, 0], `Loaded ${file.name}`, runId)
   }
 
   const handleDownloadSplat = () => {
