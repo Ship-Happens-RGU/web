@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as THREE from 'three'
-import { Button, HTMLSelect, Intent, Spinner } from '@blueprintjs/core'
+import { Button, Card, HTMLSelect, Intent, Text } from '@blueprintjs/core'
 
 type ColorMode = 'range' | 'intensity' | 'normals' | 'rgb'
 
@@ -24,6 +24,7 @@ export default function UnwrappedScanOverlay({
   const [stationCount, setStationCount] = useState(0)
   const [fillGaps, setFillGaps] = useState(true)
   const [isRendering, setIsRendering] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [info, setInfo] = useState('—')
 
   const renderUnwrapped = useCallback(async () => {
@@ -36,6 +37,7 @@ export default function UnwrappedScanOverlay({
     }
 
     setIsRendering(true)
+    setProgress(0.05)
     await new Promise((r) => setTimeout(r, 15))
 
     const stations: Array<{ t: number[] }> = viewer.stations ?? []
@@ -78,7 +80,8 @@ export default function UnwrappedScanOverlay({
     const maxRange = box && !box.isEmpty() ? Math.max(1, box.getSize(new THREE.Vector3()).length() * 0.65) : 30
 
     let plotted = 0
-    for (const leaf of leaves) {
+    for (let li = 0; li < leaves.length; li++) {
+      const leaf = leaves[li]
       const recs: Uint8Array = leaf.readback(gl)
       cells.transformRecordsInto(recs, leaf.count, leaf, tmp)
 
@@ -131,9 +134,16 @@ export default function UnwrappedScanOverlay({
           plotted++
         }
       }
+
+      if (li % 8 === 0 || li === leaves.length - 1) {
+        setProgress(0.05 + ((li + 1) / Math.max(1, leaves.length)) * 0.85)
+        await new Promise((r) => setTimeout(r, 0))
+      }
     }
 
     if (fillGaps) {
+      setProgress(0.95)
+      await new Promise((r) => setTimeout(r, 0))
       const copy = new Uint8ClampedArray(data)
       for (let y = 1; y < H - 1; y++) {
         for (let x = 1; x < W - 1; x++) {
@@ -162,6 +172,7 @@ export default function UnwrappedScanOverlay({
 
     const ctx = canvas.getContext('2d')!
     ctx.putImageData(imgData, 0, 0)
+    setProgress(1)
     setInfo(`${W}×${H} unwrapped · ${plotted.toLocaleString()} pixels`)
     setIsRendering(false)
   }, [colorBy, stationIndex, fillGaps])
@@ -245,11 +256,14 @@ export default function UnwrappedScanOverlay({
           className="max-w-full max-h-full object-contain rounded-lg border border-[#2a2a2a] shadow-2xl"
         />
         {isRendering && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <div className="flex items-center gap-2 bg-[#1e1e1e] border border-[#333333] px-4 py-2 rounded-lg text-xs text-white">
-              <Spinner size={16} />
-              <span>Unwrapping 2D scan…</span>
-            </div>
+          <div className="absolute inset-0 z-30 grid place-items-center bg-[#111111]/72 backdrop-blur-[4px]">
+            <Card elevation={4} className="card w-[min(380px,86vw)]!">
+              <Text>Unwrapping 2D scan…</Text>
+
+              <div className="bar">
+                <i style={{ width: `${Math.round(progress * 100)}%` }} />
+              </div>
+            </Card>
           </div>
         )}
       </div>
