@@ -470,9 +470,28 @@ export default function ViewerView({ active }: { active: boolean }) {
       if (cancelled) return
       const v = (
         window as unknown as {
-          __viewer?: { canvas?: HTMLCanvasElement; resize: () => void }
+          __viewer?: {
+            canvas?: HTMLCanvasElement
+            knobs?: Record<string, any>
+            setKnobs?: (k: any) => void
+            resize: () => void
+          }
         }
       ).__viewer
+      if (v?.knobs && v.setKnobs) {
+        if (!v.knobs.maxPx || !v.knobs.density || !v.knobs.movingQuality) {
+          v.setKnobs({
+            ...v.knobs,
+            maxPx: v.knobs.maxPx || 12,
+            density: v.knobs.density || 2.5,
+            movingQuality: v.knobs.movingQuality || 0.4,
+            size: v.knobs.size || 2.5,
+            bright: v.knobs.bright || 1,
+            gamma: v.knobs.gamma || 1,
+            flySpeed: v.knobs.flySpeed || 2,
+          })
+        }
+      }
       const host = viewportRef.current
       if (v?.canvas && host) {
         if (v.canvas.parentElement !== host) {
