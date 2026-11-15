@@ -37,7 +37,6 @@ import '@/packages/viewer/src/style.css'
 
 type ViewMode =
   | 'points'
-  | 'mesh'
   | 'stations'
   | 'raster'
   | 'splat'
@@ -322,17 +321,6 @@ export default function ViewerView({ active }: { active: boolean }) {
         viewer?.exitBubble?.()
         app?.setDisplay?.('points')
         viewer?.fit?.()
-        return
-      }
-
-      if (mode === 'mesh') {
-        viewer?.exitBubble?.()
-        const hasMesh =
-          (app?.meshEntities?.()?.length ?? 0) > 0 ||
-          (app?.meshData?.idx?.length ?? 0) > 0
-        if (hasMesh) {
-          app?.setDisplay?.('mesh')
-        }
         return
       }
 
@@ -684,17 +672,6 @@ export default function ViewerView({ active }: { active: boolean }) {
             </Button>
             <Button
               small
-              minimal={activeViewModeTab !== 'mesh'}
-              intent={activeViewModeTab === 'mesh' ? Intent.PRIMARY : Intent.NONE}
-              icon="cube"
-              disabled={!isPointCloudReady}
-              title={!isPointCloudReady ? 'Waiting for point cloud to finish rendering…' : undefined}
-              onClick={() => handleSelectViewMode('mesh')}
-            >
-              3D Triangle Mesh
-            </Button>
-            <Button
-              small
               minimal={activeViewModeTab !== 'stations'}
               intent={
                 activeViewModeTab === 'stations' ? Intent.PRIMARY : Intent.NONE
@@ -798,8 +775,6 @@ export default function ViewerView({ active }: { active: boolean }) {
                   }`}
                 >
                   <div className="mb-2 pb-1.5 border-b border-[#2a2a2a] font-semibold text-gray-200">
-                    {activeViewModeTab === 'mesh' &&
-                      '3D Triangle Mesh (Surface Reconstruction)'}
                     {activeViewModeTab === 'stations' &&
                       '360° Panorama / Station Views'}
                     {activeViewModeTab === 'raster' &&
@@ -861,259 +836,6 @@ export default function ViewerView({ active }: { active: boolean }) {
                 <summary>How this works</summary>
                 <p className="hint">
                   Bounding shapes, combined as a union: keep only what lies inside any of them, or mark one <b>Remove</b> to drop what is inside it. A section is a slab you move, tilt and thicken with the gizmo — floors, a wall, a corridor.
-                </p>
-              </details>
-            </div>
-
-            <div
-              className={`grp ${activeViewModeTab === 'mesh' ? '' : 'hidden'}`}
-              data-grp="mesh"
-            >
-              <label className="row">
-                <span>Detail</span>
-                <input
-                  type="range"
-                  id="k-mvox"
-                  min="0.5"
-                  max="60"
-                  step="0.5"
-                  defaultValue="6"
-                />
-                <b className="mono" id="v-mvox">
-                  6 cm
-                </b>
-              </label>
-
-              <label className="row">
-                <span>Smoothing</span>
-                <input
-                  type="range"
-                  id="k-msmooth"
-                  min="0"
-                  max="6"
-                  step="1"
-                  defaultValue="2"
-                />
-                <b className="mono" id="v-msmooth">
-                  2
-                </b>
-              </label>
-
-              <label className="row">
-                <span>Fill gaps</span>
-                <input
-                  type="range"
-                  id="k-mtrunc"
-                  min="1"
-                  max="4"
-                  step="0.5"
-                  defaultValue="2"
-                />
-                <b className="mono" id="v-mtrunc">
-                  2.0
-                </b>
-              </label>
-
-              <Button
-                id="k-mbuild"
-                intent={Intent.PRIMARY}
-                fill
-                size="small"
-                className="mb-1.5"
-              >
-                Build from points…
-              </Button>
-
-              <p className="statusline" id="v-mesh">
-                —
-              </p>
-
-              <p className="lab mono">SHOW</p>
-
-              <ButtonGroup fill className="mb-2">
-                <Button id="k-disppoints" size="small" className="on">
-                  Points
-                </Button>
-
-                <Button id="k-dispmesh" size="small">
-                  Mesh
-                </Button>
-
-                <Button id="k-dispboth" size="small">
-                  Both
-                </Button>
-              </ButtonGroup>
-
-              <Switch
-                id="k-mflat"
-                label="Flat shading"
-                alignIndicator={Alignment.END}
-                className="row flex! w-full items-center justify-between"
-              />
-
-              <p className="lab mono mesh-have">EDIT</p>
-
-              <ButtonGroup fill className="mb-2 mesh-have">
-                <Button id="k-meshflip" size="small">
-                  Flip
-                </Button>
-
-                <Button id="k-meshsmooth" size="small">
-                  Smooth
-                </Button>
-
-                <Button id="k-meshdecim" size="small">
-                  Decimate
-                </Button>
-              </ButtonGroup>
-
-              <label className="row mesh-have">
-                <span>Smooth passes</span>
-                <input
-                  type="range"
-                  id="k-meshiter"
-                  min="1"
-                  max="20"
-                  step="1"
-                  defaultValue="5"
-                />
-                <b className="mono" id="v-meshiter">
-                  5
-                </b>
-              </label>
-
-              <Switch
-                id="k-meshtaubin"
-                label="Keep volume"
-                alignIndicator={Alignment.END}
-                defaultChecked
-                className="row mesh-have w-full items-center justify-between"
-              />
-
-              <label className="row mesh-have">
-                <span>Decimate to</span>
-                <input
-                  type="range"
-                  id="k-meshcell"
-                  min="0.5"
-                  max="100"
-                  step="0.5"
-                  defaultValue="10"
-                />
-                <b className="mono" id="v-meshcell">
-                  10 cm
-                </b>
-              </label>
-
-              <p className="lab mono mesh-have">MEASURE</p>
-
-              <Button
-                id="k-meshmeasure"
-                fill
-                size="small"
-                className="mb-1.5 mesh-have"
-              >
-                Area and volume
-              </Button>
-
-              <p className="lab mono mesh-have">COMPARE</p>
-
-              <label className="row mesh-have">
-                <span>Distance to</span>
-                <HTMLSelect id="k-meshref" />
-              </label>
-
-              <Switch
-                id="k-meshsigned"
-                label="Signed"
-                alignIndicator={Alignment.END}
-                className="row mesh-have w-full items-center justify-between"
-              />
-
-              <Button
-                id="k-meshdist"
-                fill
-                size="small"
-                className="mb-1.5 mesh-have"
-              >
-                Distance from this cloud
-              </Button>
-
-              <p className="lab mono mesh-have">SAMPLE</p>
-
-              <label className="row mesh-have">
-                <span>Sample</span>
-                <HTMLSelect id="k-meshsmode" defaultValue="count">
-                  <option value="count">points in all</option>
-                  <option value="density">points per m²</option>
-                </HTMLSelect>
-              </label>
-
-              <label className="row mesh-have">
-                <span>How many</span>
-                <input
-                  type="number"
-                  id="k-meshsval"
-                  min="100"
-                  step="1000"
-                  defaultValue="200000"
-                />
-              </label>
-
-              <Button
-                id="k-meshsample"
-                fill
-                size="small"
-                className="mb-1.5 mesh-have"
-              >
-                Sample to a new layer
-              </Button>
-
-              <label className="row mesh-have">
-                <span>Format</span>
-                <HTMLSelect id="k-meshfmt" defaultValue="ply">
-                  <option value="ply">PLY (binary)</option>
-                  <option value="obj">OBJ</option>
-                  <option value="stl">STL (binary)</option>
-                </HTMLSelect>
-              </label>
-
-              <Button
-                id="k-meshsave"
-                intent={Intent.PRIMARY}
-                fill
-                size="small"
-                className="mb-1.5 mesh-have"
-              >
-                Export mesh…
-              </Button>
-
-              <Button id="k-mclear" fill size="small" className="mb-1.5 mesh-have">
-                Discard mesh
-              </Button>
-
-              <p className="statusline" id="v-meshinfo">
-                no mesh yet
-              </p>
-
-              <Button id="k-meshopen" fill size="small" className="mb-1.5">
-                Import a mesh…
-              </Button>
-
-              <p className="hint">
-                Opens a PLY, OBJ or STL as a layer of its own, to compare against or edit.
-              </p>
-
-              <details className="sub">
-                <summary>How this works</summary>
-                <p className="hint">
-                  <b>Build from points</b> is surface reconstruction: it needs normals, and writes a triangle mesh as a separate object that you can show, hide, measure or export. <b>Detail</b> is the voxel size, so smaller is finer and slower, and below the scan&apos;s own point spacing it only adds noise. <b>Fill gaps</b> widens the band each point writes, closing small holes at the cost of rounding sharp edges.
-                </p>
-                <p className="hint">
-                  <b>Area</b> and <b>volume</b> are measured through the layer&apos;s transform. A volume only means anything when the mesh is closed, so the boundary edge count is reported next to it. <b>Smooth</b> is Taubin with Keep volume on and plain Laplacian with it off. <b>Decimate</b> is vertex clustering at the cell you set, which is fast but cannot hit an exact triangle count.
-                </p>
-                <p className="hint">
-                  <b>Distance from this cloud</b> measures every point of the active point layer to the nearest triangle of the mesh layer you pick, and writes it as a scalar field.
                 </p>
               </details>
             </div>
