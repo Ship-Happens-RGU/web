@@ -33,4 +33,16 @@ export interface Scan {
   notes: string | null
   uploadedBy: string | null
   uploadedAt: string
+  /** The GLB mesh converted from this scan, or null if it has not been converted. */
+  model: ScanModelInfo | null
+}
+
+/** A triangle-mesh model (GLB) converted from a scan's point cloud. */
+export interface ScanModelInfo {
+  format: 'glb'
+  fileSize: number
+  vertexCount: number | null
+  triangleCount: number | null
+  voxelCm: number | null
+  createdAt: string
 }

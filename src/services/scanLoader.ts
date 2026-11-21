@@ -61,20 +61,63 @@ export async function getViewerApp(timeoutMs = 15000): Promise<ViewerApp> {
 }
 
 /** Fetches a scan's file, reporting progress as a 0..1 fraction. */
-export async function downloadScan(
+export function downloadScan(
   scan: Scan,
   options: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
 ): Promise<File> {
-  const cached = cache.get(scan.id)
+  return downloadCached(scan.id, `/api/v1/scans/${scan.id}/file`, scan.fileName, scan.fileSize, options)
+}
+
+/** Fetches a scan's converted GLB model, reporting progress as a 0..1 fraction. */
+export function downloadModel(
+  scan: Scan,
+  options: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
+): Promise<File> {
+  if (!scan.model) {
+    return Promise.reject(new Error('This scan has no model yet'))
+  }
+
+  const name = `${scan.name.replace(/[\\/:*?"<>|]+/g, '_') || 'model'}.glb`
+
+  return downloadCached(`model:${scan.id}`, `/api/v1/scans/${scan.id}/model`, name, scan.model.fileSize, options)
+}
+
+/** Drops a cached model, e.g. after it has been regenerated. */
+export function forgetModel(scanId: string) {
+  cache.delete(`model:${scanId}`)
+}
+
+/** Opens the scan's GLB model in the viewer: much smaller than the point cloud, so it shows first. */
+export async function openModelInViewer(
+  scan: Scan,
+  options: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
+): Promise<void> {
+  const [app, file] = await Promise.all([getViewerApp(), downloadModel(scan, options)])
+
+  if (options.signal?.aborted) {
+    return
+  }
+
+  await app.openFile(file)
+}
+
+async function downloadCached(
+  key: string,
+  url: string,
+  fileName: string,
+  expectedSize: number,
+  options: { onProgress?: (fraction: number) => void; signal?: AbortSignal },
+): Promise<File> {
+  const cached = cache.get(key)
 
   if (cached) {
-    remember(scan.id, cached)
+    remember(key, cached)
     options.onProgress?.(1)
 
     return cached
   }
 
-  const response = await fetch(`/api/v1/scans/${scan.id}/file`, {
+  const response = await fetch(url, {
     credentials: 'include',
     signal: options.signal,
   })
@@ -84,7 +127,7 @@ export async function downloadScan(
     throw new Error(error?.error ?? `Download failed (${response.status})`)
   }
 
-  const total = Number(response.headers.get('Content-Length')) || scan.fileSize
+  const total = Number(response.headers.get('Content-Length')) || expectedSize
   const reader = response.body.getReader()
   const chunks: Uint8Array<ArrayBuffer>[] = []
   let received = 0
@@ -101,8 +144,8 @@ export async function downloadScan(
     options.onProgress?.(total ? Math.min(received / total, 1) : 0)
   }
 
-  const file = new File(chunks, scan.fileName, { type: 'application/octet-stream' })
-  remember(scan.id, file)
+  const file = new File(chunks, fileName, { type: 'application/octet-stream' })
+  remember(key, file)
 
   return file
 }

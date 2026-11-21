@@ -15,7 +15,16 @@ import {
   Tag,
   TextArea,
 } from '@blueprintjs/core'
+import { useQueryClient } from '@tanstack/react-query'
 import { useUploadScan } from '@/composables/ApiWrappers/Scans/useScanMutations'
+import { QUERY_KEYS } from '@/constants/queryKeys'
+import {
+  canConvertToModel,
+  convertE57ToGlb,
+  uploadScanModel,
+  type ConvertStats,
+  type ModelProgress,
+} from '@/services/modelConverter'
 import type { ServerUploadProgress } from '@/services/api'
 import { mergeE57Files, type MergeProgress } from '@/services/scanMerger'
 import type { Scan, ScanTree } from '@/types/models'
@@ -41,6 +50,12 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
   const [mergeProgress, setMergeProgress] = useState<MergeProgress | null>(null)
   const [isMerging, setIsMerging] = useState(false)
   const [mergeError, setMergeError] = useState<string | null>(null)
+  const [modelProgress, setModelProgress] = useState<ModelProgress | null>(null)
+  const [modelError, setModelError] = useState<string | null>(null)
+  /** Set when the scan uploaded but its model did not, so the dialog stays open to say so. */
+  const [uploadedScan, setUploadedScan] = useState<Scan | null>(null)
+  const [isFinishing, setIsFinishing] = useState(false)
+  const queryClient = useQueryClient()
 
   const abortRef = useRef<AbortController | null>(null)
   const upload = useUploadScan()
@@ -55,6 +70,10 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
     setMergeProgress(null)
     setIsMerging(false)
     setMergeError(null)
+    setModelProgress(null)
+    setModelError(null)
+    setUploadedScan(null)
+    setIsFinishing(false)
     upload.reset()
   }
 
@@ -103,7 +122,7 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
   const totalBytes = files.reduce((acc, f) => acc + f.size, 0)
   const date = new Date(scanDate)
   const isMultiple = files.length > 1
-  const isBusy = upload.isPending || isMerging
+  const isBusy = upload.isPending || isMerging || isFinishing
   const valid = files.length > 0 && !Number.isNaN(date.getTime())
 
   const submit = async () => {
@@ -134,9 +153,25 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
       }
     }
 
-    // Upload the final file to Apache Iceberg on S3
-    upload.mutate(
-      {
+    // Convert to a 3D model while the file uploads: both read the same local file.
+    const convertPromise: Promise<{ glb: Blob; stats: ConvertStats } | null> = canConvertToModel(fileToUpload.name)
+      ? convertE57ToGlb(fileToUpload, {
+          signal: controller.signal,
+          onProgress: (p) => setModelProgress({ fraction: p.fraction * 0.95, message: p.message }),
+        })
+      : Promise.resolve(null)
+    // handled below; this stops an early failure being reported as unhandled meanwhile
+    convertPromise.catch(() => undefined)
+
+    if (canConvertToModel(fileToUpload.name)) {
+      setModelProgress({ fraction: 0, message: 'Starting model conversion…' })
+    }
+
+    let scan: Scan
+
+    try {
+      // Upload the final file to Apache Iceberg on S3
+      scan = await upload.mutateAsync({
         treeId: tree.id,
         file: fileToUpload,
         scanDate: date,
@@ -152,15 +187,55 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
           setServerProgress(progress)
         },
         signal: controller.signal,
-      },
-      {
-        onSuccess: (scan) => {
-          reset()
-          onClose()
-          onUploaded?.(scan)
-        },
-      },
-    )
+      })
+    } catch {
+      // shown from upload.error; stop the conversion too
+      controller.abort()
+      setModelProgress(null)
+
+      return
+    }
+
+    setIsFinishing(true)
+
+    try {
+      const converted = await convertPromise
+
+      if (converted) {
+        setModelProgress({ fraction: 0.95, message: 'Uploading model…' })
+        await uploadScanModel(scan.id, converted.glb, converted.stats, {
+          signal: controller.signal,
+          onProgress: (f) => setModelProgress({ fraction: 0.95 + f * 0.05, message: 'Uploading model…' }),
+        })
+        await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.treeScans(scan.treeId) })
+      }
+    } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError') {
+        return
+      }
+
+      // The scan itself is saved; keep the dialog open to explain the model is missing.
+      setIsFinishing(false)
+      setModelProgress(null)
+      setModelError((err as Error)?.message || 'Model conversion failed')
+      setUploadedScan(scan)
+
+      return
+    }
+
+    reset()
+    onClose()
+    onUploaded?.(scan)
+  }
+
+  const finishWithoutModel = () => {
+    const scan = uploadedScan
+    reset()
+    onClose()
+
+    if (scan) {
+      onUploaded?.(scan)
+    }
   }
 
   const cancelled = upload.error?.name === 'AbortError'
@@ -362,6 +437,29 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
             </div>
           )}
 
+          {modelProgress && (
+            <div className="flex flex-col gap-1.5 my-3 rounded border border-white/10 bg-[#161616] p-2.5">
+              <div className="flex items-center justify-between text-caption">
+                <span className="font-medium text-white/90">
+                  <Icon icon="cube" size={12} className="mr-1.5 text-[#30aedb]" />
+                  Converting to 3D model (GLB)
+                </span>
+                <span className="text-[#30aedb] font-mono">{Math.round(modelProgress.fraction * 100)}%</span>
+              </div>
+              <ProgressBar intent={Intent.PRIMARY} value={modelProgress.fraction} className="h-1.5!" />
+              <span className="text-caption text-white/60">
+                {upload.isPending ? `${modelProgress.message} (in parallel with the upload)` : modelProgress.message}
+              </span>
+            </div>
+          )}
+
+          {uploadedScan && modelError && (
+            <Callout intent={Intent.WARNING} icon="cube" className="my-2">
+              The scan was uploaded, but its 3D model could not be created: {modelError}. It will open as a point
+              cloud; you can try <strong>Generate model</strong> from the viewer later.
+            </Callout>
+          )}
+
           {mergeError && <Callout intent={Intent.DANGER} className="my-2">{mergeError}</Callout>}
           {upload.error && !cancelled && <Callout intent={Intent.DANGER} className="my-2">{upload.error.message}</Callout>}
         </DialogBody>
@@ -369,6 +467,10 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
         <DialogFooter
           actions={
             <>
+              {uploadedScan ? (
+                <Button intent={Intent.PRIMARY} text="Open scan" onClick={finishWithoutModel} />
+              ) : (
+                <>
               <Button text={isBusy ? 'Cancel' : 'Cancel'} onClick={close} />
               <Button
                 type="submit"
@@ -378,6 +480,8 @@ export default function UploadScanDialog({ tree, isOpen, onClose, onUploaded }: 
                 disabled={!valid}
                 loading={isBusy}
               />
+                </>
+              )}
             </>
           }
         />

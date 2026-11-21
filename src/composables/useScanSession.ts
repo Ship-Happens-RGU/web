@@ -60,13 +60,18 @@ interface ScanSessionState {
   browseTreeId: string | null
   /** Most recently viewed scans, newest first. */
   recentScans: RecentScanEntry[]
+  /** How scans are shown: the converted 3D model (default, falls back to points) or the point cloud. */
+  representation: ScanRepresentation
 }
+
+export type ScanRepresentation = 'model' | 'points'
 
 let state: ScanSessionState = {
   viewerTreeId: null,
   selectedScanId: null,
   browseTreeId: null,
   recentScans: readRecentScans(),
+  representation: 'model',
 }
 
 const listeners = new Set<() => void>()
@@ -109,6 +114,7 @@ export const scanSession = {
           : state.recentScans,
     }),
   browse: (treeId: string | null) => setState({ browseTreeId: treeId }),
+  setRepresentation: (representation: ScanRepresentation) => setState({ representation }),
 }
 
 export function useScanSession() {

@@ -12,14 +12,18 @@ import {
 } from '@blueprintjs/core'
 import { useScanTree } from '@/composables/ApiWrappers/Scans/useScanTree'
 import { useTreeScans } from '@/composables/ApiWrappers/Scans/useTreeScans'
-import { useScanSession } from '@/composables/useScanSession'
-import { openScanInViewer } from '@/services/scanLoader'
+import { useQueryClient } from '@tanstack/react-query'
+import { QUERY_KEYS } from '@/constants/queryKeys'
+import { useScanSession, type ScanRepresentation } from '@/composables/useScanSession'
+import { canConvertToModel, generateScanModel } from '@/services/modelConverter'
+import { downloadScan, forgetModel, openModelInViewer, openScanInViewer } from '@/services/scanLoader'
 import type { Scan } from '@/types/models'
 import { formatBytes, formatDate, formatDateTime } from '@/utils/format'
 import UploadScanDialog from '@/views/Scans/Components/UploadScanDialog'
 
 export default function ScanTimeline() {
-  const { viewerTreeId, selectedScanId, selectScan } = useScanSession()
+  const { viewerTreeId, selectedScanId, selectScan, representation, setRepresentation } = useScanSession()
+  const queryClient = useQueryClient()
   const treeQuery = useScanTree(viewerTreeId)
   const scansQuery = useTreeScans(viewerTreeId)
 
@@ -29,6 +33,12 @@ export default function ScanTimeline() {
   const [loadProgress, setLoadProgress] = useState<number | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  /** What is on screen for the current scan, which can differ from the choice when there is no model. */
+  const [shown, setShown] = useState<ScanRepresentation | null>(null)
+  const [loadNote, setLoadNote] = useState<string | null>(null)
+  const [generating, setGenerating] = useState<{ scanId: string; fraction: number; message: string } | null>(null)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const generateAbortRef = useRef<AbortController | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -51,9 +61,9 @@ export default function ScanTimeline() {
 
   const currentScan = selectedIndex >= 0 ? scans[selectedIndex] : null
 
-  // Function to load a scan into the viewer
+  // Function to load a scan into the viewer: its 3D model first when it has one, else the point cloud
   const loadScan = useCallback(
-    async (scan: Scan) => {
+    async (scan: Scan, want: ScanRepresentation) => {
       activeAbortRef.current?.abort()
       const controller = new AbortController()
       activeAbortRef.current = controller
@@ -61,14 +71,38 @@ export default function ScanTimeline() {
       setLoadingScanId(scan.id)
       setLoadProgress(0)
       setLoadError(null)
+      setLoadNote(null)
+
+      const onProgress = (fraction: number) => {
+        setLoadProgress(fraction)
+      }
 
       try {
-        await openScanInViewer(scan, {
-          signal: controller.signal,
-          onProgress: (fraction) => {
-            setLoadProgress(fraction)
-          },
-        })
+        let opened: ScanRepresentation = 'points'
+
+        if (want === 'model' && scan.model) {
+          try {
+            await openModelInViewer(scan, { signal: controller.signal, onProgress })
+            opened = 'model'
+          } catch (err: unknown) {
+            if ((err as Error)?.name === 'AbortError') {
+              throw err
+            }
+
+            setLoadNote(`Model failed to load (${(err as Error)?.message ?? 'unknown error'}), showing the point cloud`)
+            setLoadProgress(0)
+          }
+        }
+
+        if (opened === 'points') {
+          await openScanInViewer(scan, { signal: controller.signal, onProgress })
+        }
+
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setShown(opened)
         setLoadingScanId(null)
         setLoadProgress(null)
       } catch (err: unknown) {
@@ -82,15 +116,46 @@ export default function ScanTimeline() {
     [],
   )
 
-  // Trigger loading when selectedScanId changes
+  // Trigger loading when the selected scan, its model, or the chosen representation changes
   useEffect(() => {
     if (currentScan) {
-      void loadScan(currentScan)
+      void loadScan(currentScan, representation)
     }
     return () => {
       activeAbortRef.current?.abort()
     }
-  }, [currentScan, loadScan])
+  }, [currentScan, representation, loadScan])
+
+  /** Converts an already-uploaded E57 into a model (download, convert in the browser, upload). */
+  const handleGenerateModel = async (scan: Scan) => {
+    generateAbortRef.current?.abort()
+    const controller = new AbortController()
+    generateAbortRef.current = controller
+    setGenerateError(null)
+    setGenerating({ scanId: scan.id, fraction: 0, message: 'Downloading scan…' })
+
+    try {
+      const file = await downloadScan(scan, {
+        signal: controller.signal,
+        onProgress: (f) => setGenerating({ scanId: scan.id, fraction: f * 0.2, message: 'Downloading scan…' }),
+      })
+      await generateScanModel(scan.id, file, {
+        signal: controller.signal,
+        onProgress: (p) => setGenerating({ scanId: scan.id, fraction: 0.2 + p.fraction * 0.8, message: p.message }),
+      })
+      forgetModel(scan.id)
+      setRepresentation('model')
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.treeScans(scan.treeId) })
+    } catch (err: unknown) {
+      if ((err as Error)?.name !== 'AbortError') {
+        setGenerateError((err as Error)?.message || 'Could not generate the model')
+      }
+    } finally {
+      setGenerating(null)
+    }
+  }
+
+  useEffect(() => () => generateAbortRef.current?.abort(), [])
 
   // Auto-scroll the timeline to keep the selected scan clip in view
   useEffect(() => {
@@ -220,6 +285,15 @@ export default function ScanTimeline() {
             </div>
           )}
 
+          {loadNote && (
+            <Tooltip content={loadNote} intent={Intent.WARNING}>
+              <span className="flex items-center gap-1 text-[11px] text-amber-400 shrink-0">
+                <Icon icon="warning-sign" size={12} />
+                <span>Point cloud</span>
+              </span>
+            </Tooltip>
+          )}
+
           {loadError && (
             <Tooltip content={loadError} intent={Intent.DANGER}>
               <span className="flex items-center gap-1 text-[11px] text-red-400 shrink-0">
@@ -230,8 +304,72 @@ export default function ScanTimeline() {
           )}
         </div>
 
-        {/* Right: Zoom controls and Upload */}
+        {/* Right: Model / point cloud, zoom controls and Upload */}
         <div className="flex items-center gap-1.5">
+          {currentScan && (
+            <ButtonGroup>
+              <Tooltip
+                placement="top"
+                content={
+                  currentScan.model
+                    ? `3D model · ${formatBytes(currentScan.model.fileSize)}${
+                        currentScan.model.triangleCount
+                          ? ` · ${currentScan.model.triangleCount.toLocaleString()} triangles`
+                          : ''
+                      }`
+                    : 'This scan has no 3D model yet'
+                }
+              >
+                <Button
+                  icon="cube"
+                  size="small"
+                  disabled={!currentScan.model}
+                  intent={shown === 'model' ? Intent.PRIMARY : Intent.NONE}
+                  active={representation === 'model' && !!currentScan.model}
+                  onClick={() => setRepresentation('model')}
+                >
+                  Model
+                </Button>
+              </Tooltip>
+              <Tooltip placement="top" content={`Point cloud · ${formatBytes(currentScan.fileSize)}`}>
+                <Button
+                  icon="heatmap"
+                  size="small"
+                  intent={shown === 'points' ? Intent.PRIMARY : Intent.NONE}
+                  active={representation === 'points' || !currentScan.model}
+                  onClick={() => setRepresentation('points')}
+                >
+                  Point cloud
+                </Button>
+              </Tooltip>
+            </ButtonGroup>
+          )}
+
+          {currentScan && !currentScan.model && canConvertToModel(currentScan.fileName) && (
+            generating?.scanId === currentScan.id ? (
+              <Tooltip content={generating.message} placement="top">
+                <Button size="small" icon="stop" onClick={() => generateAbortRef.current?.abort()}>
+                  {`Generating ${Math.round(generating.fraction * 100)}%`}
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip
+                placement="top"
+                intent={generateError ? Intent.DANGER : undefined}
+                content={generateError ?? 'Convert this scan into a 3D model (GLB) that loads before the point cloud'}
+              >
+                <Button
+                  size="small"
+                  icon={generateError ? 'error' : 'build'}
+                  disabled={!!generating}
+                  onClick={() => void handleGenerateModel(currentScan)}
+                >
+                  Generate model
+                </Button>
+              </Tooltip>
+            )
+          )}
+
           <ButtonGroup minimal>
             <Tooltip content="Zoom out timeline" placement="top">
               <Button
@@ -312,6 +450,7 @@ export default function ScanTimeline() {
 
                   <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-white/55">
                     {isLoading && <Spinner size={10} intent={Intent.PRIMARY} />}
+                    {scan.model && <Icon icon="cube" size={10} title="Has a 3D model" />}
                     <span>{formatBytes(scan.fileSize)}</span>
                   </div>
 
